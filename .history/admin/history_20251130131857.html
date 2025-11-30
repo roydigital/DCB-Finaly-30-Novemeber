@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Order Archives</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- FontAwesome & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Luxon for Date Formatting (More powerful than native Date) -->
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gold: '#f59e0b',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Archives</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders
+            </a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager
+            </a>
+            <a href="customers.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-users w-5 text-center"></i> Customers
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg shadow-red-900/20">
+                <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> Order History
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <!-- Header & Filters -->
+        <header class="bg-white shadow-sm border-b border-gray-200 z-10 p-4 md:p-6 space-y-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="md:hidden w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                    <div>
+                        <h2 class="text-xl font-bold font-display text-brand-dark">MASTER ORDER ARCHIVES</h2>
+                        <span class="text-xs text-gray-500 hidden md:inline">Complete historical record of every transaction</span>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow flex items-center gap-2 text-sm font-bold transition">
+                        <i class="fa-solid fa-file-excel"></i> Export CSV
+                    </button>
+                    <button onclick="fetchHistory()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded shadow flex items-center gap-2 text-sm font-bold transition">
+                        <i class="fa-solid fa-rotate-right"></i> Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Filters Bar -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                
+                <!-- Search -->
+                <div class="md:col-span-4 relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" onkeyup="applyFilters()" placeholder="Search ID, Name, Phone..." class="w-full pl-9 pr-3 py-2 border rounded text-sm focus:border-brand-red focus:outline-none">
+                </div>
+
+                <!-- Status Filter -->
+                <div class="md:col-span-2">
+                    <select id="statusFilter" onchange="applyFilters()" class="w-full p-2 border rounded text-sm focus:border-brand-red focus:outline-none bg-white">
+                        <option value="All">All Statuses</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="md:col-span-3">
+                    <input type="date" id="dateStart" onchange="applyFilters()" class="w-full p-2 border rounded text-sm focus:border-brand-red focus:outline-none text-gray-600">
+                </div>
+                <div class="md:col-span-3">
+                    <input type="date" id="dateEnd" onchange="applyFilters()" class="w-full p-2 border rounded text-sm focus:border-brand-red focus:outline-none text-gray-600">
+                </div>
+            </div>
+        </header>
+
+        <!-- Data Table Area -->
+        <div class="flex-1 overflow-hidden p-4 md:p-6 bg-gray-100 flex flex-col">
+            
+            <div class="bg-white rounded-xl shadow border border-gray-200 flex-1 flex flex-col overflow-hidden">
+                <!-- Table Header -->
+                <div class="grid grid-cols-12 bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider p-4">
+                    <div class="col-span-2 md:col-span-1">ID</div>
+                    <div class="col-span-3 md:col-span-2">Date & Time</div>
+                    <div class="col-span-3 md:col-span-2">Customer</div>
+                    <div class="hidden md:block md:col-span-4">Items Summary</div>
+                    <div class="col-span-2 md:col-span-1 text-right">Total</div>
+                    <div class="col-span-2 md:col-span-1 text-center">Status</div>
+                    <div class="hidden md:block md:col-span-1 text-right">Action</div>
+                </div>
+
+                <!-- Table Body -->
+                <div id="history-rows" class="overflow-y-auto flex-1 divide-y divide-gray-100">
+                    <div class="p-8 text-center text-gray-400 flex flex-col items-center">
+                        <i class="fa-solid fa-spinner fa-spin text-3xl mb-2"></i>
+                        <span>Loading historical data...</span>
+                    </div>
+                </div>
+                
+                <!-- Footer / Pagination Info -->
+                <div class="p-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
+                    <span>Showing <span id="showing-count" class="font-bold">0</span> records</span>
+                    <span>Total Revenue (Visible): <span id="total-visible-rev" class="font-bold text-brand-dark">₹0</span></span>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Detailed Order Drawer (The Receipt View) -->
+    <div id="orderDrawer" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeDrawer()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col" id="drawerPanel">
+            
+            <!-- Drawer Header -->
+            <div class="bg-brand-dark text-white p-6 flex justify-between items-center">
+                <div>
+                    <h2 class="font-display font-bold text-xl">ORDER #<span id="d-id">--</span></h2>
+                    <p class="text-xs text-gray-400" id="d-date">--</p>
+                </div>
+                <button onclick="closeDrawer()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <!-- Receipt Body -->
+            <div class="flex-1 overflow-y-auto p-6 bg-white font-mono text-sm">
+                
+                <!-- Status Badge -->
+                <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                    <span class="text-gray-500 font-sans font-bold">Status</span>
+                    <span id="d-status" class="px-3 py-1 rounded text-xs font-bold font-sans uppercase">--</span>
+                </div>
+
+                <!-- Customer Details -->
+                <div class="mb-6">
+                    <h3 class="font-bold text-gray-800 mb-2 border-b border-dashed border-gray-300 pb-1">CUSTOMER</h3>
+                    <div class="text-gray-600 space-y-1">
+                        <div class="flex justify-between"><span>Name:</span> <span id="d-name" class="font-bold text-black">--</span></div>
+                        <div class="flex justify-between"><span>Phone:</span> <span id="d-phone">--</span></div>
+                        <div class="mt-2 text-xs italic bg-gray-50 p-2 rounded border border-gray-100" id="d-note-container">
+                            <span class="font-bold">Note:</span> <span id="d-note">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Items -->
+                <div class="mb-6">
+                    <h3 class="font-bold text-gray-800 mb-2 border-b border-dashed border-gray-300 pb-1">ITEMS</h3>
+                    <div id="d-items-list" class="space-y-3">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+
+                <!-- Financials -->
+                <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                    <div class="flex justify-between mb-1">
+                        <span>Subtotal</span>
+                        <span id="d-subtotal">₹0</span>
+                    </div>
+                    <div class="flex justify-between mb-1 text-gray-500 text-xs">
+                        <span>Discount</span>
+                        <span id="d-discount">-₹0</span>
+                    </div>
+                    <div class="flex justify-between mb-1 text-gray-500 text-xs">
+                        <span>Taxes (Included)</span>
+                        <span>₹0</span>
+                    </div>
+                    <div class="border-t border-gray-300 my-2"></div>
+                    <div class="flex justify-between font-bold text-lg text-brand-dark">
+                        <span>GRAND TOTAL</span>
+                        <span id="d-total">₹0</span>
+                    </div>
+                    <div class="text-right text-xs text-gray-500 mt-1 uppercase" id="d-payment">COD</div>
+                </div>
+
+            </div>
+
+            <!-- Drawer Footer -->
+            <div class="p-4 border-t border-gray-200 bg-gray-50 flex gap-2">
+                <button onclick="window.print()" class="flex-1 border border-gray-300 bg-white text-gray-700 py-2 rounded font-bold hover:bg-gray-100">
+                    <i class="fa-solid fa-print mr-1"></i> Print
+                </button>
+                <button class="flex-1 bg-brand-red text-white py-2 rounded font-bold hover:bg-red-700 shadow">
+                    <i class="fa-solid fa-envelope mr-1"></i> Email Receipt
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const DateTime = luxon.DateTime;
+
+        let allOrders = []; // Master storage
+        let visibleOrders = []; // Filtered view
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set date picker defaults (Current Month)
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            document.getElementById('dateStart').valueAsDate = firstDay;
+            document.getElementById('dateEnd').valueAsDate = now;
+
+            fetchHistory();
+        });
+
+        async function fetchHistory() {
+            const container = document.getElementById('history-rows');
+            container.innerHTML = `<div class="p-10 text-center"><i class="fa-solid fa-spinner fa-spin text-2xl"></i><br>Fetching archives...</div>`;
+
+            try {
+                // CHANGED: We now fetch 'customers' data too!
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select(`
+                        *,
+                        customers (first_name, mobile_number), 
+                        order_items (item_name, variant, quantity, price_per_unit)
+                    `)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                allOrders = data;
+                applyFilters();
+
+            } catch (err) {
+                console.error("History fetch error:", err);
+                container.innerHTML = `<div class="p-10 text-center text-red-500">Failed to load history.<br>${err.message}</div>`;
+            }
+        }
+
+        function applyFilters() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const startStr = document.getElementById('dateStart').value;
+            const endStr = document.getElementById('dateEnd').value;
+
+            // Convert inputs to Luxon dates for comparison (start of day / end of day)
+            const startDate = startStr ? DateTime.fromISO(startStr).startOf('day') : null;
+            const endDate = endStr ? DateTime.fromISO(endStr).endOf('day') : null;
+
+            visibleOrders = allOrders.filter(order => {
+                const orderDate = DateTime.fromISO(order.created_at);
+
+                // 1. Text Search (ID, Customer info inside note)
+                // Note parsing hack: customer info is often in the 'note' field in this schema
+                const searchableText = `${order.id} ${order.note || ''} ${order.grand_total}`.toLowerCase();
+                if (!searchableText.includes(query)) return false;
+
+                // 2. Status
+                if (statusFilter !== 'All') {
+                    // Check strict match or fuzzy match (e.g. Delivered vs Completed)
+                    if (order.status !== statusFilter) return false;
+                }
+
+                // 3. Date Range
+                if (startDate && orderDate < startDate) return false;
+                if (endDate && orderDate > endDate) return false;
+
+                return true;
+            });
+
+            renderTable(visibleOrders);
+            updateSummary(visibleOrders);
+        }
+
+        function renderTable(orders) {
+            const container = document.getElementById('history-rows');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `<div class="p-10 text-center text-gray-400">No records found matching filters.</div>`;
+                return;
+            }
+
+            container.innerHTML = orders.map(order => {
+                const dt = DateTime.fromISO(order.created_at);
+                const dateStr = dt.toFormat('dd MMM yyyy');
+                const timeStr = dt.toFormat('hh:mm a');
+
+                // NEW LOGIC: Use linked customer data, fallback to Note parsing if missing
+                let custName = "Guest";
+                
+                if (order.customers) {
+                    custName = order.customers.first_name;
+                } else if(order.note && order.note.includes("Name:")) {
+                    // Fallback for old orders before we made this change
+                    custName = order.note.split(',')[0].replace('Name:', '').trim();
+                }
+
+                // Item Summary
+                const firstItem = order.order_items[0]?.item_name || "Unknown Item";
+                const extraCount = order.order_items.length - 1;
+                const summary = extraCount > 0 ? `${firstItem} + ${extraCount} more` : firstItem;
+
+                // Status Color
+                let statusColor = "bg-gray-100 text-gray-600";
+                if (order.status === 'Completed' || order.status === 'Delivered') statusColor = "bg-green-100 text-green-700 border border-green-200";
+                if (order.status === 'Cancelled') statusColor = "bg-red-50 text-red-500 border border-red-100";
+                if (order.status === 'Pending') statusColor = "bg-yellow-50 text-yellow-600 border border-yellow-100";
+
+                return `
+                <div class="grid grid-cols-12 p-4 text-sm hover:bg-gray-50 transition border-b border-gray-100 cursor-pointer group items-center" onclick="openDrawer(${order.id})">
+                    <div class="col-span-2 md:col-span-1 font-mono font-bold text-gray-500">#${order.id}</div>
+                    <div class="col-span-3 md:col-span-2">
+                        <div class="font-bold text-gray-800">${dateStr}</div>
+                        <div class="text-xs text-gray-400">${timeStr}</div>
+                    </div>
+                    <div class="col-span-3 md:col-span-2 truncate pr-2">
+                        <div class="font-bold text-brand-dark">${custName}</div>
+                        <div class="text-xs text-gray-400">${order.customers ? order.customers.mobile_number : ''}</div>
+                    </div>
+                    <div class="hidden md:block md:col-span-4 text-gray-500 truncate">
+                        ${summary}
+                    </div>
+                    <div class="col-span-2 md:col-span-1 text-right font-display font-bold text-gray-800">
+                        ₹${order.grand_total}
+                    </div>
+                    <div class="col-span-2 md:col-span-1 text-center">
+                        <span class="px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide ${statusColor}">${order.status || 'Pending'}</span>
+                    </div>
+                    <div class="hidden md:block md:col-span-1 text-right text-gray-300 group-hover:text-brand-red">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function updateSummary(orders) {
+            document.getElementById('showing-count').innerText = orders.length;
+            const total = orders.reduce((sum, o) => sum + (o.grand_total || 0), 0);
+            document.getElementById('total-visible-rev').innerText = '₹' + total.toLocaleString('en-IN');
+        }
+
+        // --- DRAWER LOGIC ---
+
+        function openDrawer(orderId) {
+            const order = allOrders.find(o => o.id === orderId);
+            if (!order) return;
+
+            // Header
+            document.getElementById('d-id').innerText = order.id;
+            document.getElementById('d-date').innerText = DateTime.fromISO(order.created_at).toLocaleString(DateTime.DATETIME_MED);
+            
+            const statusEl = document.getElementById('d-status');
+            statusEl.innerText = order.status || 'Unknown';
+            // Simple coloring
+            if(order.status === 'Completed') statusEl.className = "px-3 py-1 rounded text-xs font-bold font-sans uppercase bg-green-100 text-green-700";
+            else if(order.status === 'Cancelled') statusEl.className = "px-3 py-1 rounded text-xs font-bold font-sans uppercase bg-red-100 text-red-700";
+            else statusEl.className = "px-3 py-1 rounded text-xs font-bold font-sans uppercase bg-gray-100 text-gray-700";
+
+            // Populate Customer (Parse from Note)
+            let name = "Guest";
+            let phone = "--";
+            let noteBody = order.note || "No notes";
+            
+            if(order.note && order.note.includes("Name:")) {
+                // Heuristic parsing based on "Name: X, Phone: Y. Note"
+                try {
+                    const parts = order.note.split('.'); // Split intro from actual note
+                    const infoParts = parts[0].split(',');
+                    name = infoParts[0].replace('Name:', '').trim();
+                    phone = infoParts[1] ? infoParts[1].replace('Phone:', '').trim() : '--';
+                    noteBody = parts.slice(1).join('.').trim();
+                    if(!noteBody) noteBody = "No special instructions";
+                } catch(e) { console.log("Note parse error", e); }
+            }
+
+            document.getElementById('d-name').innerText = name;
+            document.getElementById('d-phone').innerText = phone;
+            document.getElementById('d-note').innerText = noteBody;
+
+            // Populate Items
+            const itemsContainer = document.getElementById('d-items-list');
+            itemsContainer.innerHTML = order.order_items.map(item => `
+                <div class="flex justify-between items-start text-sm">
+                    <div class="flex-1">
+                        <span class="font-bold text-gray-800">${item.quantity} x</span> ${item.item_name}
+                        <div class="text-xs text-gray-500 pl-6">${item.variant}</div>
+                    </div>
+                    <div class="font-mono text-gray-600">₹${item.price_per_unit * item.quantity}</div>
+                </div>
+            `).join('');
+
+            // Financials
+            const subtotal = order.grand_total; // Assuming grand total is stored mostly
+            document.getElementById('d-subtotal').innerText = '₹' + subtotal;
+            document.getElementById('d-total').innerText = '₹' + subtotal;
+            document.getElementById('d-payment').innerText = `Payment: ${order.payment_mode || 'COD'}`;
+
+            // Show Drawer
+            const drawer = document.getElementById('orderDrawer');
+            const panel = document.getElementById('drawerPanel');
+            drawer.classList.remove('hidden');
+            setTimeout(() => { panel.classList.remove('translate-x-full'); }, 10);
+        }
+
+        function closeDrawer() {
+            const drawer = document.getElementById('orderDrawer');
+            const panel = document.getElementById('drawerPanel');
+            panel.classList.add('translate-x-full');
+            setTimeout(() => { drawer.classList.add('hidden'); }, 300);
+        }
+
+        function downloadCSV() {
+            if(visibleOrders.length === 0) {
+                alert("No data to export!");
+                return;
+            }
+
+            // CSV Header
+            let csv = 'Order ID,Date,Time,Status,Total Amount,Payment Mode,Note\n';
+            
+            // CSV Rows
+            visibleOrders.forEach(o => {
+                const dt = DateTime.fromISO(o.created_at);
+                // Escape note for CSV (remove commas/newlines)
+                const safeNote = (o.note || '').replace(/,/g, ';').replace(/\n/g, ' ');
+                
+                csv += `${o.id},${dt.toFormat('yyyy-MM-dd')},${dt.toFormat('HH:mm')},${o.status},${o.grand_total},${o.payment_mode},${safeNote}\n`;
+            });
+
+            // Trigger Download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `dcb_orders_${DateTime.now().toFormat('yyyyMMdd')}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Customer Intelligence</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- FontAwesome & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gold: '#f59e0b',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Growth Engine</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders
+            </a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg shadow-red-900/20">
+                <i class="fa-solid fa-users w-5 text-center"></i> Customers
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i> Analytics
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <!-- Header -->
+        <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                <span class="font-display font-bold text-xl">CRM</span>
+            </div>
+            
+            <div class="hidden md:flex flex-col">
+                <h2 class="text-xl font-bold font-display text-brand-dark">CUSTOMER INTELLIGENCE</h2>
+                <span class="text-xs text-gray-500">Track LTV, Loyalty, and Churn Risk</span>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterCustomers()" placeholder="Search name, phone..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:border-brand-red w-48 transition">
+                </div>
+                
+                <!-- Marketing Actions Dropdown -->
+                <div class="relative group">
+                    <button class="bg-brand-dark text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 text-sm hover:bg-gray-800">
+                        <i class="fa-solid fa-bullhorn"></i> Marketing <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-100 hidden group-hover:block z-50">
+                        <a href="#" onclick="copyData('phone')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"><i class="fa-solid fa-copy mr-2"></i> Copy All Phones</a>
+                        <a href="#" onclick="copyData('email')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"><i class="fa-solid fa-envelope mr-2"></i> Copy All Emails</a>
+                        <div class="border-t border-gray-100 my-1"></div>
+                        <a href="#" onclick="alert('Exporting CSV...')" class="block px-4 py-2 text-sm text-brand-red font-bold hover:bg-gray-50"><i class="fa-solid fa-file-csv mr-2"></i> Export CSV</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-brand-cream/30">
+            
+            <!-- CRM Stats Row -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Customers</div>
+                        <div class="text-3xl font-display font-bold text-brand-dark" id="stat-total">0</div>
+                    </div>
+                    <div class="w-10 h-10 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-users"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">High Value (VIP)</div>
+                        <div class="text-3xl font-display font-bold text-brand-gold" id="stat-vip">0</div>
+                        <div class="text-xs text-green-600 font-bold mt-1">LTV > ₹5000</div>
+                    </div>
+                    <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-crown"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Avg. Order Value</div>
+                        <div class="text-3xl font-display font-bold text-green-600" id="stat-aov">₹0</div>
+                    </div>
+                    <div class="w-10 h-10 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                </div>
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between relative overflow-hidden">
+                    <div class="absolute right-0 top-0 h-full w-1 bg-red-500"></div>
+                    <div>
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">At Risk (Churn)</div>
+                        <div class="text-3xl font-display font-bold text-red-600" id="stat-churn">0</div>
+                        <div class="text-xs text-red-400 mt-1">No order > 30 days</div>
+                    </div>
+                    <div class="w-10 h-10 bg-red-50 text-red-600 rounded-full flex items-center justify-center"><i class="fa-solid fa-user-clock"></i></div>
+                </div>
+            </div>
+
+            <!-- Customer Table -->
+            <div class="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200 tracking-wider">
+                                <th class="p-4 font-semibold">Customer Details</th>
+                                <th class="p-4 font-semibold">Location</th>
+                                <th class="p-4 font-semibold text-center">Orders</th>
+                                <th class="p-4 font-semibold text-right">Lifetime Value (LTV)</th>
+                                <th class="p-4 font-semibold text-center">Status</th>
+                                <th class="p-4 font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-table-body" class="divide-y divide-gray-100 text-sm">
+                            <tr><td colspan="6" class="p-8 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Customer Data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Customer Detail Drawer (Slide-over) -->
+    <div id="customerDrawer" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeDrawer()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-2xl w-full bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col" id="drawerPanel">
+            
+            <!-- Drawer Header -->
+            <div class="bg-brand-dark text-white px-8 py-6 flex justify-between items-start">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-2xl font-display font-bold border-2 border-brand-red" id="drawer-avatar">
+                        AB
+                    </div>
+                    <div>
+                        <h2 class="text-2xl font-display font-bold leading-none mb-1" id="drawer-name">Customer Name</h2>
+                        <div class="flex gap-4 text-sm text-gray-300">
+                            <span><i class="fa-solid fa-phone text-brand-red text-xs mr-1"></i> <span id="drawer-phone">--</span></span>
+                            <span><i class="fa-solid fa-envelope text-brand-red text-xs mr-1"></i> <span id="drawer-email">--</span></span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeDrawer()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times text-2xl"></i></button>
+            </div>
+
+            <!-- Drawer Stats Bar -->
+            <div class="bg-gray-50 border-b border-gray-200 grid grid-cols-3 divide-x divide-gray-200">
+                <div class="p-4 text-center">
+                    <div class="text-xs text-gray-500 uppercase">Total Spend</div>
+                    <div class="text-xl font-bold text-brand-red" id="drawer-spend">₹0</div>
+                </div>
+                <div class="p-4 text-center">
+                    <div class="text-xs text-gray-500 uppercase">Orders</div>
+                    <div class="text-xl font-bold text-brand-dark" id="drawer-orders">0</div>
+                </div>
+                <div class="p-4 text-center">
+                    <div class="text-xs text-gray-500 uppercase">Last Order</div>
+                    <div class="text-xl font-bold text-gray-600" id="drawer-last">Never</div>
+                </div>
+            </div>
+
+            <!-- Drawer Body -->
+            <div class="flex-1 overflow-y-auto p-8 bg-white">
+                
+                <!-- Address Section -->
+                <div class="mb-8">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase mb-3 border-b pb-1">Delivery Address</h3>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 flex items-start gap-3">
+                        <i class="fa-solid fa-location-dot text-blue-500 mt-1"></i>
+                        <p class="text-gray-700 leading-relaxed" id="drawer-address">
+                            No address on file.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Order History -->
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase mb-3 border-b pb-1">Recent Order History</h3>
+                    <div class="space-y-3" id="drawer-history">
+                        <!-- History Items Injected Here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Footer -->
+            <div class="p-6 border-t border-gray-200 bg-gray-50 flex gap-3">
+                <a href="#" id="wa-link" target="_blank" class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded text-center font-bold transition">
+                    <i class="fa-brands fa-whatsapp mr-2"></i> WhatsApp
+                </a>
+                <button class="flex-1 bg-brand-dark hover:bg-gray-900 text-white py-3 rounded font-bold transition">
+                    <i class="fa-solid fa-gift mr-2"></i> Send Promo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let customersData = []; // Full enriched data
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchCustomerData();
+        });
+
+        async function fetchCustomerData() {
+            try {
+                // 1. Fetch Customers
+                const { data: customers, error: custError } = await supabase
+                    .from('customers')
+                    .select('*');
+                
+                if (custError) throw custError;
+
+                // 2. Fetch All Orders (to calculate stats)
+                // Note: Ideally, you'd aggregate this in SQL, but for JS simplicity:
+                const { data: orders, error: ordError } = await supabase
+                    .from('orders')
+                    .select('id, customer_id, grand_total, created_at, status');
+
+                if (ordError) throw ordError;
+
+                // 3. Process & Merge Data
+                const enrichedCustomers = customers.map(cust => {
+                    // Filter orders for this customer (Checking both customer_id (if linked) and user_id)
+                    // Assumption: orders.customer_id is a UUID linking to auth.users or customers.user_id
+                    const custOrders = orders.filter(o => o.customer_id === cust.user_id);
+
+                    const totalSpend = custOrders.reduce((sum, o) => sum + (o.grand_total || 0), 0);
+                    const lastOrderDate = custOrders.length > 0 
+                        ? new Date(Math.max(...custOrders.map(o => new Date(o.created_at))))
+                        : null;
+                    
+                    // Determine Status
+                    let status = 'New';
+                    const daysSinceLast = lastOrderDate ? (new Date() - lastOrderDate) / (1000 * 60 * 60 * 24) : 999;
+                    
+                    if (custOrders.length > 5 && totalSpend > 5000) status = 'VIP';
+                    else if (custOrders.length > 2) status = 'Regular';
+                    else if (daysSinceLast > 30 && custOrders.length > 0) status = 'Churn Risk';
+
+                    return {
+                        ...cust,
+                        stats: {
+                            totalSpend,
+                            orderCount: custOrders.length,
+                            lastOrderDate,
+                            daysSinceLast,
+                            status
+                        },
+                        history: custOrders.sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+                    };
+                });
+
+                // Sort by LTV (Spend) desc
+                customersData = enrichedCustomers.sort((a, b) => b.stats.totalSpend - a.stats.totalSpend);
+                
+                renderTable(customersData);
+                calculateOverallStats(customersData);
+
+            } catch (err) {
+                console.error("Error loading CRM:", err);
+                document.getElementById('customers-table-body').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500">Failed to load data. Ensure 'customers' table is populated.</td></tr>`;
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('customers-table-body');
+            
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-500">No customers found in database.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map((c, index) => {
+                const initials = (c.first_name[0] + (c.last_name ? c.last_name[0] : '')).toUpperCase();
+                
+                // Status Badge Logic
+                let badgeClass = 'bg-gray-100 text-gray-600';
+                if(c.stats.status === 'VIP') badgeClass = 'bg-yellow-100 text-yellow-800 border border-yellow-200';
+                if(c.stats.status === 'Regular') badgeClass = 'bg-green-100 text-green-800';
+                if(c.stats.status === 'Churn Risk') badgeClass = 'bg-red-100 text-red-800 animate-pulse';
+
+                return `
+                <tr class="hover:bg-gray-50 transition cursor-pointer group" onclick="openDrawer(${index})">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-brand-dark text-white flex items-center justify-center font-bold text-xs">
+                                ${initials}
+                            </div>
+                            <div>
+                                <div class="font-bold text-gray-800 group-hover:text-brand-red transition">${c.first_name} ${c.last_name || ''}</div>
+                                <div class="text-xs text-gray-500">${c.mobile_number}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-sm text-gray-600">${c.area || 'Unknown'}</div>
+                        <div class="text-xs text-gray-400">${c.city || ''}</div>
+                    </td>
+                    <td class="p-4 text-center">
+                        <span class="font-bold bg-gray-100 px-2 py-1 rounded text-xs">${c.stats.orderCount}</span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="font-display font-bold text-gray-800">₹${c.stats.totalSpend.toLocaleString('en-IN')}</div>
+                    </td>
+                    <td class="p-4 text-center">
+                        <span class="px-2 py-1 rounded-full text-[10px] uppercase font-bold tracking-wide ${badgeClass}">
+                            ${c.stats.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-center">
+                        <button class="text-gray-400 hover:text-brand-red"><i class="fa-solid fa-chevron-right"></i></button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function calculateOverallStats(data) {
+            document.getElementById('stat-total').innerText = data.length;
+            
+            const vips = data.filter(c => c.stats.status === 'VIP').length;
+            document.getElementById('stat-vip').innerText = vips;
+
+            const churn = data.filter(c => c.stats.status === 'Churn Risk').length;
+            document.getElementById('stat-churn').innerText = churn;
+
+            const totalRev = data.reduce((sum, c) => sum + c.stats.totalSpend, 0);
+            const totalOrders = data.reduce((sum, c) => sum + c.stats.orderCount, 0);
+            const aov = totalOrders > 0 ? Math.round(totalRev / totalOrders) : 0;
+            
+            document.getElementById('stat-aov').innerText = '₹' + aov;
+        }
+
+        function filterCustomers() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = customersData.filter(c => 
+                c.first_name.toLowerCase().includes(q) || 
+                (c.last_name && c.last_name.toLowerCase().includes(q)) ||
+                c.mobile_number.includes(q)
+            );
+            renderTable(filtered);
+        }
+
+        // --- DRAWER LOGIC ---
+
+        function openDrawer(index) {
+            const customer = customersData[index];
+            if(!customer) return;
+
+            // Populate Drawer
+            const initials = (customer.first_name[0] + (customer.last_name ? customer.last_name[0] : '')).toUpperCase();
+            document.getElementById('drawer-avatar').innerText = initials;
+            document.getElementById('drawer-name').innerText = `${customer.first_name} ${customer.last_name || ''}`;
+            document.getElementById('drawer-phone').innerText = customer.mobile_number;
+            document.getElementById('drawer-email').innerText = customer.email || 'No email';
+            
+            document.getElementById('drawer-spend').innerText = '₹' + customer.stats.totalSpend.toLocaleString('en-IN');
+            document.getElementById('drawer-orders').innerText = customer.stats.orderCount;
+            document.getElementById('drawer-last').innerText = customer.stats.lastOrderDate ? customer.stats.lastOrderDate.toLocaleDateString() : 'Never';
+
+            document.getElementById('drawer-address').innerText = `${customer.building_no}, ${customer.area}, ${customer.landmark || ''}, ${customer.city} - ${customer.pin_code}`;
+
+            // WA Link
+            const phoneClean = customer.mobile_number.replace(/\D/g, '');
+            document.getElementById('wa-link').href = `https://wa.me/91${phoneClean}?text=Hello ${customer.first_name}, special offer for you from DCB!`;
+
+            // History
+            const historyContainer = document.getElementById('drawer-history');
+            if(customer.history.length === 0) {
+                historyContainer.innerHTML = '<div class="text-gray-400 text-sm italic">No orders yet.</div>';
+            } else {
+                historyContainer.innerHTML = customer.history.map(order => `
+                    <div class="flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-100">
+                        <div>
+                            <div class="text-xs text-gray-400">${new Date(order.created_at).toDateString()}</div>
+                            <div class="font-bold text-sm text-gray-800">#${order.id}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-brand-red">₹${order.grand_total}</div>
+                            <div class="text-[10px] uppercase font-bold text-green-600">${order.status}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Animate In
+            const drawer = document.getElementById('customerDrawer');
+            const panel = document.getElementById('drawerPanel');
+            drawer.classList.remove('hidden');
+            setTimeout(() => { panel.classList.remove('translate-x-full'); }, 10);
+        }
+
+        function closeDrawer() {
+            const drawer = document.getElementById('customerDrawer');
+            const panel = document.getElementById('drawerPanel');
+            panel.classList.add('translate-x-full');
+            setTimeout(() => { drawer.classList.add('hidden'); }, 300);
+        }
+
+        function copyData(type) {
+            let data = "";
+            if(type === 'phone') {
+                data = customersData.map(c => c.mobile_number).join(', ');
+            } else {
+                data = customersData.filter(c => c.email).map(c => c.email).join(', ');
+            }
+            
+            navigator.clipboard.writeText(data);
+            alert(`Copied ${customersData.length} ${type}s to clipboard!`);
+        }
+    </script>
+</body>
+</html>
