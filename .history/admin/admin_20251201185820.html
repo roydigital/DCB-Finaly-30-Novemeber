@@ -424,7 +424,7 @@
             } else if (status === 'Preparing') {
                 actionButtons = `
                     <button onclick="updateOrderStatus('${order.id}', 'Ready')" id="btn-${order.id}" class="flex-1 bg-brand-green hover:bg-green-700 text-white py-2 rounded font-bold text-sm transition">
-                        MARK READY <i class="fa-solid fa-bell-concierge ml-1"></i>
+                        MARK READY <i class="fa-solid fa-bell-conciorge ml-1"></i>
                     </button>
                 `;
             } else if (status === 'Ready') {
@@ -468,25 +468,6 @@
                     : ''}
                 </div>
             `;
-        }
-
-        function calculateStats() {
-            // Simple logic for "Today" based on local time
-            const today = new Date().toDateString();
-            
-            const todaysOrders = orders.filter(o => new Date(o.created_at).toDateString() === today);
-            
-            const count = todaysOrders.length;
-            const revenue = todaysOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
-            const pending = orders.filter(o => {
-                const status = (o.status || '').toLowerCase();
-                return status === 'pending';
-            }).length;
-
-            document.getElementById('stat-count').innerText = count;
-            document.getElementById('stat-revenue').innerText = '₹' + revenue.toLocaleString('en-IN');
-            document.getElementById('stat-pending').innerText = pending;
-        }
 
         function getTimeDifference(date) {
             const now = new Date();
