@@ -69,17 +69,6 @@
             45% { opacity: 0.3; }
             100% { opacity: 0; }
         }
-
-        /* Blinking effect for new orders */
-        @keyframes blinkRed {
-            0% { box-shadow: 0 0 0 0 rgba(217, 35, 35, 0.4); border-color: #D92323; }
-            50% { box-shadow: 0 0 0 6px rgba(217, 35, 35, 0.1); border-color: #ff6b6b; }
-            100% { box-shadow: 0 0 0 0 rgba(217, 35, 35, 0.4); border-color: #D92323; }
-        }
-        .animate-blink {
-            animation: blinkRed 1.5s infinite;
-            z-index: 10;
-        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
@@ -255,21 +244,19 @@
         });
 
         function setupRealtime() {
-            console.log('Setting up realtime subscription...');
             const channel = supabase
                 .channel('public:orders')
                 .on(
                     'postgres_changes',
                     { event: '*', schema: 'public', table: 'orders' },
                     (payload) => {
-                        console.log('Realtime update received:', payload);
-                        
-                        // CONFIRMED: Realtime is actually delivering data.
-                        // Only NOW do we consider realtime "Ready" and potentially stop aggressive polling.
+                        console.log('Realtime update:', payload);
                         realtimeReady = true;
-                        
+                        if (pollIntervalId) {
+                            clearInterval(pollIntervalId);
+                            pollIntervalId = null;
+                        }
                         fetchOrders(); // Refresh board on any change
-                        
                         if (payload.eventType === 'INSERT') {
                             triggerNewOrderNotice();
                             playNotificationSound();
@@ -277,62 +264,31 @@
                     }
                 )
                 .subscribe((status) => {
-                    console.log('Realtime Connection Status:', status);
                     if (status === 'SUBSCRIBED') {
-                        // NOTE: We do NOT set realtimeReady = true here.
-                        // Connecting is not enough; we need to verify we receive events.
-                        // This ensures polling continues if the table isn't in the publication.
-                        console.log('Realtime connected - waiting for first event to confirm data flow');
-                        document.getElementById('connection-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span> LIVE (Listening)';
-                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                        console.warn('Realtime connection issue:', status);
-                        realtimeReady = false; // Force fallback to polling
-                        document.getElementById('connection-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Reconnecting...';
-                        startPollingFallback();
+                        realtimeReady = true;
+                        console.log('Realtime subscribed to orders');
                     }
                 });
         }
 
         function startPollingFallback() {
-            // Poll every 5 seconds until realtime proves healthy by delivering an event
+            // Poll every 6 seconds until realtime proves healthy
             if (pollIntervalId) return;
-            
-            console.log('Starting polling fallback...');
             pollIntervalId = setInterval(() => {
-                if (realtimeReady) {
-                    console.log('Realtime confirmed healthy (events received). Stopping fallback polling.');
+                if (!realtimeReady) {
+                    console.log('Polling fallback - realtime not confirmed');
+                    fetchOrders();
+                } else {
                     clearInterval(pollIntervalId);
                     pollIntervalId = null;
-                } else {
-                    console.log('Polling check (Realtime not yet confirmed)...');
-                    fetchOrders();
                 }
-            }, 5000);
+            }, 6000);
         }
 
         function playNotificationSound() {
-            try {
-                // Simple beep for KDS
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                
-                // "Ping" sound
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(660, ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
-                
-                gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-                
-                osc.start();
-                osc.stop(ctx.currentTime + 0.5);
-            } catch (e) {
-                console.log('Audio play failed', e);
-            }
+            // Simple beep or notification logic could go here
+            // const audio = new Audio('path/to/sound.mp3');
+            // audio.play().catch(e => console.log('Audio play failed', e));
         }
 
         function triggerNewOrderNotice() {
@@ -551,11 +507,8 @@
                 `;
             }
 
-            // Blinking effect for Pending orders
-            const blinkClass = status === 'Pending' ? 'animate-blink' : '';
-
             return `
-                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 status-border-${status} relative group hover:shadow-md transition ${blinkClass}">
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 status-border-${status} relative group hover:shadow-md transition">
                     <div class="flex justify-between items-start mb-3">
                         <div>
                             <span class="font-mono text-xs text-gray-400">#${order.id.substring(0, 8)}</span>

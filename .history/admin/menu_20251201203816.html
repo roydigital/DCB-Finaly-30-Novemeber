@@ -753,9 +753,6 @@
                 
             } catch (error) {
                 console.error('Upload error:', error);
-                alert(`Upload failed: ${error.message}\n\nPlease ensure:\n1. Supabase Storage bucket 'files' exists\n2. Bucket has public permissions\n3. CORS is configured for your domain`);
-                progressDiv.classList.add('hidden');
-                
                 // Reset preview
                 document.getElementById('preview-img').classList.add('hidden');
                 document.getElementById('upload-content').classList.remove('hidden');

@@ -333,39 +333,6 @@
             } catch (e) {
                 console.log('Audio play failed', e);
             }
-        }
-
-        function triggerNewOrderNotice() {
-            const flash = document.getElementById('new-order-flash');
-            if (!flash) return;
-
-            flash.classList.remove('hidden');
-            flash.classList.add('active');
-
-            // Remove the flash after the animation completes so it can be re-triggered
-            setTimeout(() => {
-                flash.classList.remove('active');
-                flash.classList.add('hidden');
-            }, 2400);
-        }
-
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }
-
-        // --- CORE FUNCTIONS ---
-
-        async function fetchOrders() {
-            // Fetch orders with customer information and items from JSONB
-            try {
-                // Fetch all customer fields to handle potential schema inconsistencies (name vs first_name)
-                const { data, error } = await supabase
-                    .from('orders')
-                    .select('*, customers(*)')
-                    .order('created_at', { ascending: false })
-                    .limit(100); // Get last 100 orders to ensure we see all recent ones
-
                 if (error) throw error;
 
                 const previousIds = new Set(orders.map(o => o.id));
