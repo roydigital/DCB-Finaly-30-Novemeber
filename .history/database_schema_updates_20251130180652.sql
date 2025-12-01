@@ -1,0 +1,82 @@
+-- COMPREHENSIVE DATABASE SCHEMA FIX FOR DCB ORDERING SYSTEM
+-- Run this in your Supabase SQL Editor to fix all schema issues
+
+-- 1. First, let's check what values exist in the table
+SELECT DISTINCT order_type, status, payment_method FROM orders;
+
+-- 2. UPDATE EXISTING DATA to match the code requirements
+-- Fix status values
+UPDATE orders SET status = 'Pending' WHERE status = 'pending';
+UPDATE orders SET status = 'Completed' WHERE status = 'completed';
+UPDATE orders SET status = 'Confirmed' WHERE status = 'confirmed';
+UPDATE orders SET status = 'Preparing' WHERE status = 'preparing';
+UPDATE orders SET status = 'Ready' WHERE status = 'ready';
+UPDATE orders SET status = 'Cancelled' WHERE status = 'cancelled';
+
+-- Fix payment method values  
+UPDATE orders SET payment_method = 'COD' WHERE payment_method = 'cash';
+UPDATE orders SET payment_method = 'Online' WHERE payment_method = 'online';
+UPDATE orders SET payment_method = 'Card' WHERE payment_method = 'card';
+
+-- Fix order type values
+UPDATE orders SET order_type = 'Delivery' WHERE order_type = 'delivery';
+
+-- 5. Update existing rows with default values
+UPDATE orders SET payment_method = 'COD' WHERE payment_method IS NULL;
+UPDATE orders SET status = 'Pending' WHERE status IS NULL;
+
+-- 6. NOW add the constraints back
+ALTER TABLE orders ADD CONSTRAINT orders_order_type_check 
+CHECK (order_type IN ('Delivery', 'Pickup', 'Dine-in'));
+
+ALTER TABLE orders ADD CONSTRAINT orders_status_check 
+CHECK (status IN ('Pending', 'Confirmed', 'Preparing', 'Ready', 'Completed', 'Cancelled'));
+
+ALTER TABLE orders ADD CONSTRAINT orders_payment_method_check 
+CHECK (payment_method IN ('COD', 'Online', 'Card'));
+
+-- 4. Add missing columns to orders table with proper defaults
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'COD';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Pending';
+
+-- 5. Update existing rows with default values
+UPDATE orders SET payment_method = 'COD' WHERE payment_method IS NULL;
+UPDATE orders SET status = 'Pending' WHERE status IS NULL;
+
+-- 6. Add missing columns to customers table
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS name TEXT;
+
+-- 7. Ensure menu_items table has all required columns
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS prices JSONB;
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS in_stock BOOLEAN DEFAULT true;
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS category TEXT;
+
+-- 8. Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+CREATE INDEX IF NOT EXISTS idx_menu_items_category ON menu_items(category);
+CREATE INDEX IF NOT EXISTS idx_menu_items_in_stock ON menu_items(in_stock);
+
+-- 9. Verify all changes
+SELECT 
+    table_name, 
+    column_name, 
+    data_type,
+    is_nullable
+FROM information_schema.columns 
+WHERE table_name IN ('orders', 'customers', 'menu_items')
+ORDER BY table_name, ordinal_position;
+
+-- 10. Show table constraints
+SELECT 
+    tc.table_name, 
+    tc.constraint_name, 
+    tc.constraint_type
+FROM information_schema.table_constraints tc
+WHERE tc.table_name IN ('orders', 'customers', 'menu_items')
+ORDER BY tc.table_name, tc.constraint_name;

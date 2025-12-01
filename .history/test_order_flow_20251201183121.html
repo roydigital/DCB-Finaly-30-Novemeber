@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Order Flow Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>DCB Order Flow Test</h1>
+    
+    <div class="test" id="test1">
+        <h3>Test 1: Check Supabase Connection</h3>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div class="test" id="test2">
+        <h3>Test 2: Fetch Existing Orders</h3>
+        <button onclick="fetchOrders()">Fetch Orders</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div class="test" id="test3">
+        <h3>Test 3: Create Test Order</h3>
+        <button onclick="createTestOrder()">Create Test Order</button>
+        <div id="result3"></div>
+    </div>
+    
+    <div class="test" id="test4">
+        <h3>Test 4: Check Admin Page Status Mapping</h3>
+        <button onclick="checkStatusMapping()">Check Status Mapping</button>
+        <div id="result4"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
