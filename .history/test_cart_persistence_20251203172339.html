@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cart Persistence - DCB</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #BA412D;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        button {
+            background: #BA412D;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #9A3120;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+        }
+        .success {
+            background: #e8f5e8;
+            border-left-color: #4CAF50;
+        }
+        .error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        code {
+            background: #f1f1f1;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Cart Persistence</h1>
+        <p>This test verifies that the cart is properly saved to and loaded from localStorage.</p>
+        
+        <div class="test-section">
+            <h2>Test 1: Check localStorage Functions</h2>
+            <button onclick="testLocalStorageFunctions()">Test saveCartToMemory() and loadCartFromMemory()</button>
+            <div id="test1-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 2: Simulate Cart Operations</h2>
+            <button onclick="simulateCartOperations()">Simulate Adding/Removing Items</button>
+            <div id="test2-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test 3: Verify Persistence Across Page Reload</h2>
+            <button onclick="verifyPersistence()">Save Cart and Reload Test</button>
+            <div id="test3-result" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Current localStorage Contents</h2>
+            <button onclick="showLocalStorage()">Show localStorage Contents</button>
+            <div id="storage-contents" class="result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Clear Test Data</h2>
+            <button onclick="clearTestData()">Clear All Test Data</button>
+            <p><small>This will remove <code>dcb_cart</code> from localStorage</small></p>
+        </div>
+    </div>
+
+    <script>
+        // Mock state object similar to the one in index.html
+        const mockState = {
+            cart: []
+        };
+
+        // Copy the localStorage functions from index.html
+        function saveCartToMemory() {
+            localStorage.setItem('dcb_cart', JSON.stringify(mockState.cart));
+        }
+
+        function loadCartFromMemory() {
+            const savedCart = localStorage.getItem('dcb_cart');
+            if (savedCart) {
+                try {
+                    mockState.cart = JSON.parse(savedCart);
+                    return mockState.cart;
+                } catch (e) {
+                    console.error("Error loading cart", e);
+                    localStorage.removeItem('dcb_cart');
+                    return null;
+                }
+            }
+            return null;
+        }
+
+        function testLocalStorageFunctions() {
+            const resultDiv = document.getElementById('test1-result');
+            try {
+                // Clear any existing test data
+                localStorage.removeItem('dcb_cart');
+                
+                // Test 1: Save empty cart
+                mockState.cart = [];
+                saveCartToMemory();
+                const savedEmpty = localStorage.getItem('dcb_cart');
+                
+                // Test 2: Save cart with items
+                mockState.cart = [
+                    { id: 1, name: 'Chicken Tikka', variant: '4 pcs', price: 199, quantity: 2 },
+                    { id: 2, name: 'Butter Chicken', variant: 'Half', price: 229, quantity: 1 }
+                ];
+                saveCartToMemory();
+                const savedWithItems = localStorage.getItem('dcb_cart');
+                
+                // Test 3: Load cart
+                mockState.cart = [];
+                const loadedCart = loadCartFromMemory();
+                
+                resultDiv.innerHTML = `
+                    <h3>Test Results:</h3>
+                    <p><strong>✓ Empty cart saved:</strong> ${savedEmpty === '[]' ? 'PASS' : 'FAIL'}</p>
+                    <p><strong>✓ Cart with items saved:</strong> ${savedWithItems && savedWithItems.includes('Chicken Tikka') ? 'PASS' : 'FAIL'}</p>

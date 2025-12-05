@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Recipe Logic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Test Recipe Logic</h1>
+    
+    <div class="space-y-4">
+        <div>
+            <h2 class="text-lg font-bold">1. Check Database Schema</h2>
+            <button onclick="checkSchema()" class="bg-blue-500 text-white px-4 py-2 rounded">Check if recipe column exists</button>
+            <div id="schema-result" class="mt-2"></div>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">2. Test Recipe Builder</h2>
+            <p class="text-sm text-gray-600">Open <a href="admin/menu.html" class="text-blue-500 underline" target="_blank">admin/menu.html</a> to test the recipe builder interface.</p>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">3. Test Order with Recipe</h2>
+            <p class="text-sm text-gray-600">Place an order on <a href="index.html" class="text-blue-500 underline" target="_blank">index.html</a> after setting up a recipe.</p>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">4. Manual SQL Execution</h2>
+            <p class="text-sm text-gray-600">Run the SQL in <code>recipe_schema_update.sql</code> in Supabase SQL Editor to add the recipe column.</p>
+            <pre class="bg-gray-100 p-2 text-xs mt-2">-- Add recipe column to menu_items table
+ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS recipe JSONB DEFAULT '{}'::jsonb;</pre>
+        </div>
+    </div>
+    
+    <script>
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        async function checkSchema() {
+            const resultDiv = document.getElementById('schema-result');
+            resultDiv.innerHTML = '<div class="text-blue-500">Checking...</div>';
+            
+            try {
+                const { data, error } = await supabase
+                    .from('menu_items')
+                    .select('*')
+                    .limit(1);
+                    
+                if (error) {
+                    resultDiv.innerHTML = `<div class="text-red-500">Error: ${error.message}</div>`;
+                    return;
+                }
+                
+                if (data.length > 0) {
+                    const sample = data[0];
+                    const hasRecipe = 'recipe' in sample;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="bg-gray-100 p-4 rounded">
+                            <div class="font-bold">Sample Menu Item Fields:</div>
+                            <div class="text-sm">${Object.keys(sample).join(', ')}</div>
+                            <div class="mt-2 font-bold ${hasRecipe ? 'text-green-600' : 'text-red-600'}">
+                                Recipe column exists: ${hasRecipe ? 'YES' : 'NO'}
+                            </div>
+                            ${hasRecipe ? `<div class="mt-2">Recipe sample: ${JSON.stringify(sample.recipe)}</div>` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = '<div class="text-yellow-600">No menu items found in database.</div>';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="text-red-500">Exception: ${err.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

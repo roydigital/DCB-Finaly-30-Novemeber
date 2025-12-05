@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Location Functionality</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">Location Functionality Test</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Test 1: Location Permission Modal -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4">Test 1: Location Permission Modal</h2>
+                <p class="mb-4">This tests the modal that asks for location permission when a customer opens the website.</p>
+                <button onclick="testLocationModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Test Location Modal
+                </button>
+                <div id="test1-result" class="mt-4 p-3 bg-gray-50 rounded hidden"></div>
+            </div>
+
+            <!-- Test 2: Location Storage -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4">Test 2: Location Storage</h2>
+                <p class="mb-4">This tests if location is properly stored in sessionStorage.</p>
+                <button onclick="testLocationStorage()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                    Test Location Storage
+                </button>
+                <div id="test2-result" class="mt-4 p-3 bg-gray-50 rounded hidden"></div>
+            </div>
+
+            <!-- Test 3: Order Placement with Location -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4">Test 3: Order Placement</h2>
+                <p class="mb-4">This simulates placing an order with location data.</p>
+                <button onclick="testOrderPlacement()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                    Test Order Placement
+                </button>
+                <div id="test3-result" class="mt-4 p-3 bg-gray-50 rounded hidden"></div>
+            </div>
+
+            <!-- Test 4: Clear Test Data -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-bold mb-4">Test 4: Clear Test Data</h2>
+                <p class="mb-4">Clear all test data from sessionStorage.</p>
+                <button onclick="clearTestData()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                    Clear Test Data
+                </button>
+                <div id="test4-result" class="mt-4 p-3 bg-gray-50 rounded hidden"></div>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="mt-8 bg-white p-6 rounded-lg shadow">
+            <h2 class="text-xl font-bold mb-4">Current Status</h2>
+            <div id="current-status" class="space-y-2">
+                <!-- Status will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus() {
+            const statusDiv = document.getElementById('current-status');
+            const locationAsked = sessionStorage.getItem('locationAsked');
+            const locationGranted = sessionStorage.getItem('locationGranted');
+            const userLatitude = sessionStorage.getItem('userLatitude');
+            const userLongitude = sessionStorage.getItem('userLongitude');
+            
+            statusDiv.innerHTML = `
+                <div class="flex justify-between">
+                    <span class="font-medium">Location Asked:</span>
+                    <span class="${locationAsked ? 'text-green-600' : 'text-red-600'}">${locationAsked || 'Not asked'}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="font-medium">Location Granted:</span>
+                    <span class="${locationGranted ? 'text-green-600' : 'text-red-600'}">${locationGranted || 'Not granted'}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="font-medium">Latitude:</span>
+                    <span class="${userLatitude ? 'text-green-600' : 'text-gray-600'}">${userLatitude || 'Not stored'}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="font-medium">Longitude:</span>
+                    <span class="${userLongitude ? 'text-green-600' : 'text-gray-600'}">${userLongitude || 'Not stored'}</span>
+                </div>
+            `;
+        }
+
+        function testLocationModal() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.classList.remove('hidden');
+            
+            // Simulate the location permission check
+            const locationAsked = sessionStorage.getItem('locationAsked');
+            const locationGranted = sessionStorage.getItem('locationGranted');
+            
+            if (!locationAsked && !locationGranted) {
+                resultDiv.innerHTML = `
+                    <div class="text-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Location modal would show now (after 1 second delay)
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        In the actual website, the modal appears after 1 second if location hasn't been asked/granted.
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="text-yellow-600">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        Location already ${locationGranted ? 'granted' : 'asked'} - modal won't show
+                    </div>
+                `;
+            }
+            
+            updateStatus();
+        }
+
+        function testLocationStorage() {
+            const resultDiv = document.getElementById('test2-result');
+            resultDiv.classList.remove('hidden');
+            
+            // Test if we can get location
+            if (!navigator.geolocation) {
+                resultDiv.innerHTML = `
+                    <div class="text-red-600">
+                        <i class="fas fa-times-circle mr-2"></i>
+                        Geolocation is not supported by your browser
+                    </div>
+                `;
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    
+                    // Store in sessionStorage like the actual implementation
+                    sessionStorage.setItem('userLatitude', lat);
+                    sessionStorage.setItem('userLongitude', lng);
+                    sessionStorage.setItem('locationGranted', 'true');
+                    
+                    resultDiv.innerHTML = `
+                        <div class="text-green-600">
+                            <i class="fas fa-check-circle mr-2"></i>
+                            Location captured successfully!
+                        </div>
+                        <div class="mt-2 text-sm">
+                            Latitude: ${lat}<br>
+                            Longitude: ${lng}
+                        </div>
+                        <div class="mt-2 text-sm text-gray-600">
+                            Stored in sessionStorage for this browser session
+                        </div>
+                    `;
+                    
+                    updateStatus();
+                },
+                (error) => {
+                    resultDiv.innerHTML = `
+                        <div class="text-red-600">
+                            <i class="fas fa-times-circle mr-2"></i>
+                            Failed to get location: ${error.message}
+                        </div>
+                    `;
+                }
+            );
+        }
+
+        function testOrderPlacement() {
+            const resultDiv = document.getElementById('test3-result');
+            resultDiv.classList.remove('hidden');
+            
+            // Get stored location
+            const lat = sessionStorage.getItem('userLatitude');
+            const lng = sessionStorage.getItem('userLongitude');
+            
+            if (lat && lng) {
+                resultDiv.innerHTML = `
+                    <div class="text-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Order would be placed with location data
+                    </div>
+                    <div class="mt-2 text-sm">
+                        Latitude: ${lat}<br>
+                        Longitude: ${lng}
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        In the actual order placement, these coordinates would be saved to the database.
+                    </div>
+                    <div class="mt-2">
+                        <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" 
+                           class="inline-flex items-center gap-1 text-sm bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded border border-blue-200">
+                            <i class="fas fa-map-marker-alt"></i>
+                            View on Google Maps
+                        </a>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="text-yellow-600">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        No location stored. Order would be placed without location data.
+                    </div>
+                    <div class="mt-2 text-sm text-gray-600">
+                        In the actual implementation, the order would still be placed but without coordinates.
+                    </div>
+                `;
+            }
+        }
+
+        function clearTestData() {
+            const resultDiv = document.getElementById('test4-result');
+            resultDiv.classList.remove('hidden');
+            
+            // Clear sessionStorage items
+            sessionStorage.removeItem('locationAsked');
+            sessionStorage.removeItem('locationGranted');
+            sessionStorage.removeItem('userLatitude');
+            sessionStorage.removeItem('userLongitude');
+            
+            resultDiv.innerHTML = `
+                <div class="text-green-600">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    All test data cleared from sessionStorage
+                </div>
+                <div class="mt-2 text-sm text-gray-600">
+                    Refresh the page to see the location modal again
+                </div>
+            `;
+            
+            updateStatus();
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', updateStatus);
+    </script>
+</body>
+</html>

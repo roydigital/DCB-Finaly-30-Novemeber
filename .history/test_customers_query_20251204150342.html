@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Customers Query</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Testing Customers Query</h1>
+    <div id="result">Testing...</div>
+    
+    <script>
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        async function testQuery() {
+            try {
+                // Test customers query
+                const { data: customers, error: custError } = await supabase
+                    .from('customers')
+                    .select('*');
+                
+                if (custError) {
+                    document.getElementById('result').innerHTML = 
+                        `<p style="color: red;">Customers query error: ${custError.message}</p>`;
+                    return;
+                }
+                
+                // Test orders query  
+                const { data: orders, error: ordError } = await supabase
+                    .from('orders')
+                    .select('id, customer_id, total_amount, created_at, status');
+                
+                if (ordError) {
+                    document.getElementById('result').innerHTML = 
+                        `<p style="color: red;">Orders query error: ${ordError.message}</p>` +
+                        `<p>Customers found: ${customers.length}</p>`;
+                    return;
+                }
+                
+                document.getElementById('result').innerHTML = 
+                    `<p style="color: green;">Success!</p>` +
+                    `<p>Customers found: ${customers.length}</p>` +
+                    `<p>Orders found: ${orders.length}</p>` +

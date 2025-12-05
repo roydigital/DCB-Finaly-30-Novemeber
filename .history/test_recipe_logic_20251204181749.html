@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Recipe Logic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl font-bold mb-4">Test Recipe Logic</h1>
+    
+    <div class="space-y-4">
+        <div>
+            <h2 class="text-lg font-bold">1. Check Database Schema</h2>
+            <button onclick="checkSchema()" class="bg-blue-500 text-white px-4 py-2 rounded">Check if recipe column exists</button>
+            <div id="schema-result" class="mt-2"></div>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">2. Test Recipe Builder</h2>
+            <p class="text-sm text-gray-600">Open <a href="admin/menu.html" class="text-blue-500 underline" target="_blank">admin/menu.html</a> to test the recipe builder interface.</p>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">3. Test Order with Recipe</h2>
+            <p class="text-sm text-gray-600">Place an order on <a href="index.html" class="text-blue-500 underline" target="_blank">index.html</a> after setting up a recipe.</p>
+        </div>
+        
+        <div>
+            <h2 class="text-lg font-bold">4. Manual SQL Execution</h2>

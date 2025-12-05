@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Order Flow Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '848998828089233');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=848998828089233&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- End Meta Pixel Code -->
+        <button onclick="createTestOrder()">Create Test Order</button>
+        <div id="result3"></div>
+    </div>
+    
+    <div class="test" id="test4">
+        <h3>Test 4: Check Admin Page Status Mapping</h3>
+        <button onclick="checkStatusMapping()">Check Status Mapping</button>
+        <div id="result4"></div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function setResult(testId, message, isSuccess) {
+            const element = document.getElementById(testId);
+            const resultDiv = document.getElementById(`result${testId.charAt(testId.length-1)}`);
+            
+            element.className = `test ${isSuccess ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `<pre>${message}</pre>`;
+        }
+
+        function setLoading(testId, message) {
+            const element = document.getElementById(testId);
+            const resultDiv = document.getElementById(`result${testId.charAt(testId.length-1)}`);
+            
+            element.className = 'test loading';
+            resultDiv.innerHTML = `<pre>${message}</pre>`;
+        }
+
+        async function testConnection() {
+            setLoading('test1', 'Testing connection to Supabase...');
+            
+            try {
+                const { data, error } = await supabase.from('orders').select('count').limit(1);
+                
+                if (error) {
+                    setResult('test1', `Connection Error: ${error.message}`, false);
+                } else {
+                    setResult('test1', '✅ Successfully connected to Supabase!', true);
+                }
+            } catch (err) {
+                setResult('test1', `Exception: ${err.message}`, false);
+            }
+        }
+
+        async function fetchOrders() {
+            setLoading('test2', 'Fetching orders...');
+            
+            try {
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('id, status, order_type, total_amount, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(10);
+                
+                if (error) {
+                    setResult('test2', `Error fetching orders: ${error.message}`, false);
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    setResult('test2', 'No orders found in database.', true);
+                    return;
+                }
+                
+                let output = `Found ${data.length} orders:\n\n`;
+                data.forEach(order => {
+                    output += `Order #${order.id.substring(0, 8)}:\n`;
+                    output += `  Status: ${order.status}\n`;
+                    output += `  Type: ${order.order_type}\n`;
+                    output += `  Amount: ₹${order.total_amount}\n`;
+                    output += `  Created: ${new Date(order.created_at).toLocaleString()}\n\n`;
+                });
+                
+                // Check for status consistency
+                const statuses = data.map(o => o.status).filter(s => s);
+                const uniqueStatuses = [...new Set(statuses.map(s => s.toLowerCase()))];
+                output += `\nUnique statuses (case-insensitive): ${uniqueStatuses.join(', ')}`;
+                
+                setResult('test2', output, true);
+            } catch (err) {
+                setResult('test2', `Exception: ${err.message}`, false);
+            }
+        }
+
+        async function createTestOrder() {
+            setLoading('test3', 'Creating test order...');
+            
+            try {
+                // First, create a test customer
+                const testPhone = `99999${Math.floor(Math.random() * 10000)}`;
+                const testName = `Test Customer ${Math.floor(Math.random() * 1000)}`;
+                
+                const { data: customer, error: custError } = await supabase
+                    .from('customers')
+                    .insert([{ 
+                        name: testName, 
+                        phone: testPhone,
+                        first_name: testName.split(' ')[0],
+                        mobile_number: testPhone
+                    }])
+                    .select()
+                    .single();
+                
+                if (custError && !custError.message.includes('duplicate')) {
+                    setResult('test3', `Error creating customer: ${custError.message}`, false);
+                    return;
+                }
+                
+                // Create test order
+                const testOrder = {
+                    customer_id: customer ? customer.id : '00000000-0000-0000-0000-000000000000',
+                    items: [{ name: 'Test Burger', variant: 'Regular', price: 199, qty: 1 }],
+                    total_amount: 199,
+                    order_type: 'walkin',
+                    status: 'pending',
+                    payment_method: 'cash',
+                    note: 'Test order from order flow test'
+                };
+                
+                const { data: order, error: orderError } = await supabase
+                    .from('orders')
+                    .insert([testOrder])
+                    .select()
+                    .single();
+                
+                if (orderError) {
+                    setResult('test3', `Error creating order: ${orderError.message}`, false);
+                    return;
+                }
+                
+                setResult('test3', 
+                    `✅ Test order created successfully!\n\n` +
+                    `Order ID: ${order.id}\n` +
+                    `Status: ${order.status}\n` +
+                    `Type: ${order.order_type}\n` +
+                    `Amount: ₹${order.total_amount}\n` +
+                    `Note: ${order.note}\n\n` +
+                    `This order should appear in the "NEW ORDERS" column in admin/admin.html`, 
+                    true);
+            } catch (err) {
+                setResult('test3', `Exception: ${err.message}`, false);
+            }
+        }
+
+        function checkStatusMapping() {
+            setLoading('test4', 'Checking status mapping logic...');
+            
+            // Test the status mapping logic from admin/admin.html
+            const testCases = [
+                { input: 'pending', expected: 'Pending' },
+                { input: 'Pending', expected: 'Pending' },
+                { input: 'PENDING', expected: 'Pending' },
+                { input: 'preparing', expected: 'Preparing' },
+                { input: 'Preparing', expected: 'Preparing' },
+                { input: 'ready', expected: 'Ready' },
+                { input: 'Ready', expected: 'Ready' },
+                { input: 'completed', expected: 'Completed' },
+                { input: 'Completed', expected: 'Completed' },
+                { input: 'delivered', expected: 'Completed' },
+                { input: 'cancelled', expected: 'Completed' },
+                { input: null, expected: 'Pending' },
+                { input: undefined, expected: 'Pending' },
+                { input: '', expected: 'Pending' }
+            ];
+            
+            let output = 'Status Mapping Test Results:\n\n';
+            let allPassed = true;
+            
+            testCases.forEach(testCase => {
+                // Simulate the logic from admin/admin.html
+                let status = testCase.input || 'pending';
+                const statusLower = status.toLowerCase();
+                
+                let targetCol = 'Pending'; // Default
+                
+                if (statusLower === 'preparing') {
+                    targetCol = 'Preparing';
+                } else if (statusLower === 'ready') {
+                    targetCol = 'Ready';
+                } else if (statusLower === 'completed' || statusLower === 'delivered' || statusLower === 'cancelled') {
+                    targetCol = 'Completed';
+                } else {
+                    targetCol = 'Pending';
+                }
+                
+                const passed = targetCol === testCase.expected;
+                allPassed = allPassed && passed;
+                
+                output += `Input: "${testCase.input}" → Column: ${targetCol} ${passed ? '✅' : '❌ (Expected: ' + testCase.expected + ')'}\n`;
+            });
+            
+            output += `\n${allPassed ? '✅ All tests passed!' : '❌ Some tests failed!'}`;
+            
+            setResult('test4', output, allPassed);
+        }
+
+        // Run initial connection test
+        setTimeout(testConnection, 500);
+    </script>
+</body>
+</html>

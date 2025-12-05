@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Cart Calculations</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .pass { background-color: #d4edda; color: #155724; }
+        .fail { background-color: #f8d7da; color: #721c24; }
+        .result { font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold mb-6">Test Cart Calculations</h1>
+        
+        <div class="test-case">
+            <h2 class="text-lg font-semibold">Test 1: GST Calculation (Inclusive)</h2>
+            <p>Menu prices include 5% GST. For a subtotal of ₹100:</p>
+            <ul class="list-disc pl-5 mt-2">
+                <li>GST included = ₹100 × (5/105) = ₹4.76 (rounded to ₹5)</li>
+                <li>Total = ₹100 (no extra GST added)</li>
+            </ul>
+            <div id="test1-result" class="result"></div>
+        </div>
+        
+        <div class="test-case">
+            <h2 class="text-lg font-semibold">Test 2: Delivery Charges (Subtotal < ₹499)</h2>
+            <p>For subtotal ₹300 (less than ₹499):</p>
+            <ul class="list-disc pl-5 mt-2">
+                <li>Delivery fee = ₹55</li>
+                <li>Total = ₹300 + ₹55 = ₹355</li>
+            </ul>
+            <div id="test2-result" class="result"></div>
+        </div>
+        
+        <div class="test-case">
+            <h2 class="text-lg font-semibold">Test 3: Delivery Charges (Subtotal ≥ ₹499)</h2>
+            <p>For subtotal ₹500 (equal or more than ₹499):</p>
+            <ul class="list-disc pl-5 mt-2">
+                <li>Delivery fee = ₹0</li>
+                <li>Total = ₹500</li>
+            </ul>
+            <div id="test3-result" class="result"></div>
+        </div>
+        
+        <div class="test-case">
+            <h2 class="text-lg font-semibold">Test 4: Combined Calculation</h2>
+            <p>For subtotal ₹400:</p>
+            <ul class="list-disc pl-5 mt-2">
+                <li>GST included = ₹400 × (5/105) = ₹19.05 (rounded to ₹19)</li>
+                <li>Delivery fee = ₹55 (since ₹400 < ₹499)</li>
+                <li>Total = ₹400 + ₹55 = ₹455</li>
+            </ul>
+            <div id="test4-result" class="result"></div>
+        </div>
+        
+        <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded">
+            <h3 class="font-bold text-blue-800">Implementation Details:</h3>
+            <p class="mt-2">The cart calculation now:</p>
+            <ol class="list-decimal pl-5 mt-2">
+                <li>Shows GST as included in prices (not added extra)</li>
+                <li>Calculates GST amount using: <code>Math.round(subtotal * (5/105))</code></li>
+                <li>Applies ₹55 delivery charge only if subtotal < ₹499</li>
+                <li>Shows delivery clause in brackets: "Delivery Fee (value is less than 499)"</li>
+                <li>Total = Subtotal + Delivery Fee (no extra GST added)</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Test functions
+        function calculateGSTIncluded(subtotal) {
+            // GST = subtotal * (5/105) ≈ subtotal * 0.047619
+            return Math.round(subtotal * (5/105));
+        }
+        
+        function calculateDeliveryFee(subtotal) {
+            return subtotal < 499 ? 55 : 0;
+        }
+        
+        function calculateTotal(subtotal) {
+            return subtotal + calculateDeliveryFee(subtotal);
+        }
+        
+        // Run tests
+        function runTests() {
+            // Test 1
+            const test1Subtotal = 100;
+            const test1GST = calculateGSTIncluded(test1Subtotal);
+            const test1Total = calculateTotal(test1Subtotal);
+            const test1ExpectedGST = 5; // 100 * 5/105 = 4.76 ≈ 5
+            const test1ExpectedTotal = 100; // No delivery (100 < 499? Actually 100 < 499, so delivery should be 55)
+            const test1Pass = test1GST === test1ExpectedGST && test1Total === (test1Subtotal + 55); // 100 + 55 = 155
+            
+            document.getElementById('test1-result').innerHTML = 
+                `Subtotal: ₹${test1Subtotal}, GST included: ₹${test1GST}, Delivery: ₹55, Total: ₹${test1Total} ` +
+                `<span class="${test1Pass ? 'text-green-600' : 'text-red-600'}">${test1Pass ? '✓ PASS' : '✗ FAIL'}</span>`;
+            
+            // Test 2
+            const test2Subtotal = 300;
+            const test2GST = calculateGSTIncluded(test2Subtotal);
+            const test2Delivery = calculateDeliveryFee(test2Subtotal);
+            const test2Total = calculateTotal(test2Subtotal);
+            const test2ExpectedDelivery = 55;
+            const test2ExpectedTotal = 355;
+            const test2Pass = test2Delivery === test2ExpectedDelivery && test2Total === test2ExpectedTotal;
+            
+            document.getElementById('test2-result').innerHTML = 
+                `Subtotal: ₹${test2Subtotal}, GST included: ₹${test2GST}, Delivery: ₹${test2Delivery}, Total: ₹${test2Total} ` +
+                `<span class="${test2Pass ? 'text-green-600' : 'text-red-600'}">${test2Pass ? '✓ PASS' : '✗ FAIL'}</span>`;
+            
+            // Test 3
+            const test3Subtotal = 500;
+            const test3GST = calculateGSTIncluded(test3Subtotal);
+            const test3Delivery = calculateDeliveryFee(test3Subtotal);
+            const test3Total = calculateTotal(test3Subtotal);
+            const test3ExpectedDelivery = 0;
+            const test3ExpectedTotal = 500;
+            const test3Pass = test3Delivery === test3ExpectedDelivery && test3Total === test3ExpectedTotal;
+            
+            document.getElementById('test3-result').innerHTML = 
+                `Subtotal: ₹${test3Subtotal}, GST included: ₹${test3GST}, Delivery: ₹${test3Delivery}, Total: ₹${test3Total} ` +
+                `<span class="${test3Pass ? 'text-green-600' : 'text-red-600'}">${test3Pass ? '✓ PASS' : '✗ FAIL'}</span>`;
+            
+            // Test 4
+            const test4Subtotal = 400;
+            const test4GST = calculateGSTIncluded(test4Subtotal);
+            const test4Delivery = calculateDeliveryFee(test4Subtotal);
+            const test4Total = calculateTotal(test4Subtotal);
+            const test4ExpectedGST = 19; // 400 * 5/105 = 19.05 ≈ 19
+            const test4ExpectedDelivery = 55;
+            const test4ExpectedTotal = 455;

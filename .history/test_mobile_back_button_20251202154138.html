@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mobile Back Button Functionality</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .mobile-simulator {
+            border: 2px solid #333;
+            width: 375px;
+            height: 667px;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+        }
+        .mobile-header {
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .mobile-content {
+            padding: 20px;
+            height: calc(100% - 40px);
+            overflow-y: auto;
+        }
+        .cart-sidebar {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80%;
+            height: 100%;
+            background-color: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        .cart-sidebar.open {
+            transform: translateX(0);
+        }
+        .cart-header {
+            background-color: #BA412D;
+            color: white;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .cart-content {
+            padding: 20px;
+        }
+        .back-button {
+            background-color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mobile Back Button Functionality Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Description</h2>
+        <p>This test simulates the mobile back button functionality for the "Your Order" section (cart sidebar) in the DCB application.</p>
+        <p><strong>Expected Behavior:</strong> When the cart is open on mobile devices, pressing the browser's back button should close the cart and return to the main menu.</p>
+    </div>
+    
+    <div class="test-section">
+        <h2>Implementation Details</h2>
+        <div class="test-result info">
+            <p><strong>Implemented Features:</strong></p>
+            <ul>
+                <li>History state management when opening/closing cart on mobile</li>
+                <li>popstate event listener to handle back button presses</li>
+                <li>Prevents double-closing with state tracking</li>
+                <li>Only activates on mobile viewports (< 768px)</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Mobile Simulator</h2>
+        <p>Resize your browser window to less than 768px wide to test the mobile behavior, or use the simulator below:</p>
+        
+        <div class="mobile-simulator">
+            <div class="mobile-header">
+                DCB Mobile App
+            </div>
+            <div class="mobile-content">
+                <h3>Main Menu</h3>
+                <p>This is the main menu page. Click the button below to open the cart.</p>
+                <button id="open-cart-btn">Open Cart (Your Order)</button>
+                
+                <div id="cart-sidebar" class="cart-sidebar">
+                    <div class="cart-header">
+                        <h3>Your Order</h3>
+                        <button id="close-cart-btn">Close</button>
+                    </div>
+                    <div class="cart-content">
+                        <p>This is the cart sidebar (Your Order section).</p>
+                        <p>On mobile devices, you should be able to close this by:</p>
+                        <ul>
+                            <li>Clicking the close button above</li>
+                            <li>Pressing the browser's back button</li>
+                        </ul>
+                        <button class="back-button" onclick="simulateBackButton()">Simulate Back Button Press</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button onclick="testBackButton()">Run Back Button Test</button>
+            <button onclick="resetTest()">Reset Test</button>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results">
+            <div class="test-result info">
+                Test not run yet. Click "Run Back Button Test" to start.
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Code Implementation</h2>
+        <p>The following JavaScript code has been added to index.html:</p>
+        <pre><code>
+// In DOMContentLoaded event listener:
+window.addEventListener('popstate', (event) => {
+    const sidebar = document.getElementById('cart-sidebar');
+    // Check if we're handling a cart state change
+    if (event.state && event.state.cartOpen === false) {
+        // This is a state we pushed when closing cart, ignore it
+        return;
+    }
+    if (window.innerWidth < 768 && sidebar && !sidebar.classList.contains('hidden')) {
+        // Cart is open and back button was pressed - close it
+        sidebar.classList.add('translate-x-full');
+        setTimeout(() => sidebar.classList.add('hidden'), 300);
+    }
+});
+
+// In toggleCart function (mobile section):
+if (window.innerWidth < 768) {
+    if (sidebar.classList.contains('hidden')) {
+        // Opening cart
+        history.pushState({ cartOpen: true }, '', '#cart');
+    } else {
+        // Closing cart  
+        history.pushState({ cartOpen: false }, '', window.location.pathname);
+    }
+}
+        </code></pre>
+    </div>
+
+    <script>
+        // Simulate the cart functionality
+        const cartSidebar = document.getElementById('cart-sidebar');
+        const openCartBtn = document.getElementById('open-cart-btn');
+        const closeCartBtn = document.getElementById('close-cart-btn');
+        const testResults = document.getElementById('test-results');
+        
+        let testHistory = [];
+        let currentState = null;
+        
+        // Simple history simulation
+        function pushState(state, title, url) {
+            testHistory.push({ state, title, url });
+            currentState = state;
+            console.log('Pushed state:', state, 'URL:', url);
+        }
+        
+        function back() {
+            if (testHistory.length > 1) {
+                testHistory.pop();
+                const prevState = testHistory[testHistory.length - 1];
+                currentState = prevState.state;
+                console.log('Back to state:', currentState);
+                
+                // Trigger popstate event simulation
+                const event = new PopStateEvent('popstate', { state: currentState });
+                window.dispatchEvent(event);
+            }
+        }
+        
+        // Event listeners
+        openCartBtn.addEventListener('click', () => {
+            cartSidebar.classList.add('open');
+            pushState({ cartOpen: true }, '', '#cart');
+            addTestResult('Cart opened', 'History state pushed with cartOpen: true');
+        });
+        
+        closeCartBtn.addEventListener('click', () => {
+            cartSidebar.classList.remove('open');
+            pushState({ cartOpen: false }, '', window.location.pathname);
+            addTestResult('Cart closed via button', 'History state pushed with cartOpen: false');
+        });
+        
+        // Handle popstate events
+        window.addEventListener('popstate', (event) => {
+            console.log('popstate event fired:', event.state);
+            
+            if (event.state && event.state.cartOpen === false) {
+                addTestResult('popstate with cartOpen: false', 'Ignored (prevented double-closing)', 'info');
+                return;
+            }
+            
+            if (cartSidebar.classList.contains('open')) {
+                cartSidebar.classList.remove('open');
+                addTestResult('Back button pressed', 'Cart closed automatically', 'pass');
+            }
+        });
+        
+        // Test functions
+        function simulateBackButton() {
+            addTestResult('Simulating back button press', 'Calling history.back()');
+            back();
+        }
+        
+        function testBackButton() {
+            testResults.innerHTML = '';
+            addTestResult('Starting back button test...', '', 'info');
+            
+            // Test 1: Open cart
+            setTimeout(() => {
+                openCartBtn.click();
+                addTestResult('Test 1: Cart opened', 'Should have cartOpen: true state', 'info');
+                
+                // Test 2: Simulate back button
+                setTimeout(() => {
+                    simulateBackButton();
+                    
+                    // Test 3: Verify cart is closed
+                    setTimeout(() => {
+                        if (!cartSidebar.classList.contains('open')) {
+                            addTestResult('Test 3: Cart closed successfully', 'Back button functionality works!', 'pass');
+                        } else {
+                            addTestResult('Test 3: Cart still open', 'Back button functionality failed', 'fail');
+                        }
+                    }, 500);
+                }, 1000);
+            }, 500);
+        }
+        
+        function resetTest() {
+            cartSidebar.classList.remove('open');
+            testHistory = [];
+            currentState = null;
+            testResults.innerHTML = '<div class="test-result info">Test reset. Ready to run again.</div>';
+        }
+        
+        function addTestResult(title, description, type = 'info') {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.innerHTML = `<strong>${title}</strong><br>${description}`;
+            testResults.appendChild(resultDiv);
+        }
+    </script>
+</body>

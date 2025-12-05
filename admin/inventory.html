@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Inventory Management</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            blue: '#3b82f6',
+                            green: '#16a34a'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Stock Control</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders
+            </a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager
+            </a>
+            <a href="inventory.html" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg shadow-red-900/20">
+                <i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Inventory
+            </a>
+            <a href="customers.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-users w-5 text-center"></i> Customers
+            </a>
+            <a href="history.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> History
+            </a>
+            <a href="pos.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-cash-register w-5 text-center"></i> POS System
+            </a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                <span class="font-display font-bold text-xl">STOCK</span>
+            </div>
+            
+            <div class="hidden md:flex flex-col">
+                <h2 class="text-xl font-bold font-display text-brand-dark">INVENTORY MANAGEMENT</h2>
+                <span class="text-xs text-gray-500">Track ingredients, purchases, and wastage</span>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterInventory()" placeholder="Search ingredients..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:border-brand-red w-48 md:w-64 transition">
+                </div>
+                <button onclick="openItemModal()" class="bg-brand-dark hover:bg-gray-800 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition text-sm">
+                    <i class="fa-solid fa-plus"></i> New Item
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-brand-cream/30">
+            
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col justify-between">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Total Inventory Value</div>
+                        <i class="fa-solid fa-sack-dollar text-green-500 bg-green-50 p-2 rounded-full"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-display font-bold text-gray-800" id="stat-total-value">₹0</div>
+                        <div class="text-xs text-gray-400 mt-1">Based on Cost Per Unit</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-red-100 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute right-0 top-0 w-1 h-full bg-brand-red"></div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-gray-500 text-[10px] uppercase font-bold tracking-wider">Low Stock Alerts</div>
+                        <i class="fa-solid fa-triangle-exclamation text-brand-red bg-red-50 p-2 rounded-full"></i>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-display font-bold text-brand-red" id="stat-low-stock">0</div>
+                        <div class="text-xs text-red-400 mt-1 font-bold">Action Required</div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 bg-gradient-to-r from-gray-800 to-gray-900 text-white p-4 rounded-xl shadow-md flex items-center justify-between">
+                    <div>
+                        <h3 class="font-display font-bold text-lg">Daily Stock Check</h3>
+                        <p class="text-xs text-gray-300 max-w-sm mt-1">Consistent tracking reduces wastage by 15% on average. Log your purchases immediately.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="alert('Generate report feature coming soon!')" class="bg-white/10 hover:bg-white/20 px-3 py-2 rounded text-xs font-bold border border-white/20">
+                            <i class="fa-solid fa-file-csv mr-1"></i> Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
+                                <th class="p-4 font-semibold">Ingredient / Item</th>
+                                <th class="p-4 font-semibold text-center">Status</th>
+                                <th class="p-4 font-semibold text-right">Stock On Hand</th>
+                                <th class="p-4 font-semibold text-right">Cost / Unit</th>
+                                <th class="p-4 font-semibold text-right">Total Value</th>
+                                <th class="p-4 font-semibold text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body" class="divide-y divide-gray-100 text-sm">
+                            <tr><td colspan="6" class="p-8 text-center text-gray-400"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading Inventory...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="stockModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeStockModal()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-md w-full bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col" id="stockModalPanel">
+            
+            <div class="bg-brand-dark text-white p-6">
+                <h2 class="text-xl font-display font-bold" id="stock-modal-title">Update Stock</h2>
+                <p class="text-xs text-gray-400" id="stock-modal-item">Select an item</p>
+            </div>
+
+            <div class="p-6 flex-1 overflow-y-auto">
+                <input type="hidden" id="stock-id">
+                <input type="hidden" id="stock-current">
+
+                <div class="flex bg-gray-100 p-1 rounded-lg mb-6">
+                    <button onclick="setStockMode('in')" id="btn-mode-in" class="flex-1 py-2 rounded-md text-sm font-bold shadow-sm bg-white text-green-700 transition">
+                        <i class="fa-solid fa-truck-ramp-box mr-1"></i> Stock In (Buy)
+                    </button>
+                    <button onclick="setStockMode('out')" id="btn-mode-out" class="flex-1 py-2 rounded-md text-sm font-bold text-gray-500 hover:text-gray-700 transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Wastage / Out
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Quantity to <span id="lbl-action">Add</span></label>
+                        <div class="relative">
+                            <input type="number" id="inp-qty" class="w-full p-3 border border-gray-300 rounded text-lg font-bold focus:border-brand-red focus:outline-none" placeholder="0.00">
+                            <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 font-bold" id="lbl-unit">units</span>
+                        </div>
+                    </div>
+
+                    <div id="div-supplier">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Supplier / Note</label>
+                        <input type="text" id="inp-supplier" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-brand-red focus:outline-none" placeholder="e.g. Metro Cash & Carry">
+                    </div>
+
+                    <div id="div-cost">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">New Cost Per Unit (Optional)</label>
+                        <input type="number" id="inp-new-cost" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-brand-red focus:outline-none" placeholder="Leave empty to keep current">
+                    </div>
+
+                    <div id="div-reason" class="hidden">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Reason for Removal</label>
+                        <select id="inp-reason" class="w-full p-2 border border-gray-300 rounded text-sm focus:border-brand-red focus:outline-none bg-white">
+                            <option value="Usage">Standard Usage (Manual Correction)</option>
+                            <option value="Spoilage">Spoilage / Expired</option>
+                            <option value="Spill">Spilled / Damaged</option>
+                            <option value="Theft">Unaccounted / Theft</option>
+                            <option value="Staff">Staff Meal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-gray-50 p-3 rounded border border-gray-200 text-center">
+                    <div class="text-xs text-gray-500">New Stock Level Will Be:</div>
+                    <div class="text-xl font-bold text-brand-dark" id="lbl-new-stock">--</div>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-gray-200 bg-gray-50">
+                <button onclick="confirmStockUpdate()" id="btn-confirm" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-lg transition">
+                    CONFIRM UPDATE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="itemModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-[fadeIn_0.2s_ease-out]">
+            <div class="bg-brand-dark text-white p-4 flex justify-between items-center">
+                <h3 class="font-display font-bold text-lg">Inventory Item Details</h3>
+                <button onclick="document.getElementById('itemModal').classList.add('hidden')" class="text-gray-400 hover:text-white"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Item Name</label>
+                        <input type="text" id="edit-name" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none font-bold" placeholder="e.g. Chicken Breast">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Current Stock</label>
+                        <input type="number" id="edit-stock" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Unit</label>
+                        <input type="text" id="edit-unit" list="units-list" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none" placeholder="kg, ltr, pcs">
+                        <datalist id="units-list">
+                            <option value="kg"><option value="gm"><option value="ltr"><option value="ml"><option value="pcs"><option value="pack">
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Cost Per Unit (₹)</label>
+                        <input type="number" id="edit-cost" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Min. Stock Alert</label>
+                        <input type="number" id="edit-min" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none" placeholder="Alert Threshold">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Default Supplier Info</label>
+                        <input type="text" id="edit-supplier" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none" placeholder="Supplier Name / Contact">
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-2">
+                <button onclick="document.getElementById('itemModal').classList.add('hidden')" class="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded">Cancel</button>
+                <button onclick="saveItem()" class="px-4 py-2 bg-brand-red text-white font-bold rounded hover:bg-red-700 shadow">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- STATE ---
+        let inventory = [];
+        let currentStockMode = 'in';
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchInventory();
+        });
+
+        // --- FETCH ---
+        async function fetchInventory() {
+            try {
+                const { data, error } = await supabase
+                    .from('inventory')
+                    .select('*')
+                    .order('name', { ascending: true });
+
+                if (error) throw error;
+                inventory = data;
+                renderTable(inventory);
+                calculateStats(inventory);
+
+            } catch (err) {
+                console.error('Fetch error:', err);
+                document.getElementById('inventory-table-body').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-red-500">Failed to load inventory. ${err.message}</td></tr>`;
+            }
+        }
+
+        // --- RENDER ---
+        function renderTable(data) {
+            const tbody = document.getElementById('inventory-table-body');
+            
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-gray-400">Inventory is empty. Add your first item!</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                const isLow = item.stock <= (item.minimum_stock || 0);
+                const totalValue = (item.stock * (item.cost_per_unit || 0)).toFixed(2);
+                
+                // Status Badge
+                let statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700 border border-green-200"><div class="w-1.5 h-1.5 rounded-full bg-green-500"></div> Good</span>`;
+                if(item.stock <= 0) statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">Empty</span>`;
+                else if(isLow) statusBadge = `<span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse"><div class="w-1.5 h-1.5 rounded-full bg-red-500"></div> Low Stock</span>`;
+
+                return `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-100 group">
+                    <td class="p-4">
+                        <div class="font-bold text-gray-800 text-base">${item.name}</div>
+                        <div class="text-xs text-gray-400">${item.supplier_info || 'No supplier info'}</div>
+                    </td>
+                    <td class="p-4 text-center">${statusBadge}</td>
+                    <td class="p-4 text-right font-mono text-gray-700 font-bold">
+                        ${parseFloat(item.stock).toFixed(2)} <span class="text-xs text-gray-400 font-sans">${item.unit}</span>
+                    </td>
+                    <td class="p-4 text-right font-mono text-gray-600">
+                        ₹${item.cost_per_unit || 0}
+                    </td>
+                    <td class="p-4 text-right font-mono font-bold text-brand-dark">
+                        ₹${totalValue}
+                    </td>
+                    <td class="p-4 text-center">
+                        <div class="flex justify-center gap-2">
+                            <button onclick="openStockModal('${item.id}')" class="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1.5 rounded text-xs font-bold border border-blue-200 transition">
+                                <i class="fa-solid fa-pencil mr-1"></i> Update
+                            </button>
+                            <button onclick="editItem('${item.id}')" class="text-gray-400 hover:text-gray-600 px-2 transition" title="Edit Details">
+                                <i class="fa-solid fa-gear"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function calculateStats(data) {
+            const totalVal = data.reduce((sum, item) => sum + (item.stock * (item.cost_per_unit || 0)), 0);
+            const lowStock = data.filter(item => item.stock <= (item.minimum_stock || 0) && item.stock > 0).length;
+
+            document.getElementById('stat-total-value').innerText = '₹' + Math.round(totalVal).toLocaleString('en-IN');
+            document.getElementById('stat-low-stock').innerText = lowStock;
+        }
+
+        function filterInventory() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = inventory.filter(i => i.name.toLowerCase().includes(q));
+            renderTable(filtered);
+        }
+
+        // --- STOCK MODAL LOGIC ---
+
+        let currentItem = null;
+
+        function openStockModal(id) {
+            currentItem = inventory.find(i => i.id === id);
+            if(!currentItem) return;
+
+            // Reset UI
+            setStockMode('in');
+            document.getElementById('stock-id').value = id;
+            document.getElementById('stock-modal-title').innerText = currentItem.name;
+            document.getElementById('stock-modal-item').innerText = `Current: ${currentItem.stock} ${currentItem.unit}`;
+            document.getElementById('lbl-unit').innerText = currentItem.unit;
+            document.getElementById('inp-qty').value = '';
+            document.getElementById('lbl-new-stock').innerText = currentItem.stock;
+            
+            // Show
+            const modal = document.getElementById('stockModal');
+            const panel = document.getElementById('stockModalPanel');
+            modal.classList.remove('hidden');
+            setTimeout(() => panel.classList.remove('translate-x-full'), 10);
+
+            // Listen for calc updates
+            document.getElementById('inp-qty').addEventListener('keyup', calculateNewStock);
+        }
+
+        function closeStockModal() {
+            const modal = document.getElementById('stockModal');
+            const panel = document.getElementById('stockModalPanel');
+            panel.classList.add('translate-x-full');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function setStockMode(mode) {
+            currentStockMode = mode;
+            const btnIn = document.getElementById('btn-mode-in');
+            const btnOut = document.getElementById('btn-mode-out');
+            const btnConfirm = document.getElementById('btn-confirm');
+            
+            if(mode === 'in') {
+                btnIn.className = "flex-1 py-2 rounded-md text-sm font-bold shadow-sm bg-white text-green-700 transition ring-1 ring-green-200";
+                btnOut.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500 hover:text-gray-700 transition";
+                
+                document.getElementById('lbl-action').innerText = "Add (Stock In)";
+                document.getElementById('div-supplier').classList.remove('hidden');
+                document.getElementById('div-cost').classList.remove('hidden');
+                document.getElementById('div-reason').classList.add('hidden');
+                
+                btnConfirm.className = "w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-bold shadow-lg transition";
+                btnConfirm.innerText = "CONFIRM PURCHASE";
+            } else {
+                btnIn.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500 hover:text-gray-700 transition";
+                btnOut.className = "flex-1 py-2 rounded-md text-sm font-bold shadow-sm bg-white text-brand-red transition ring-1 ring-red-200";
+                
+                document.getElementById('lbl-action').innerText = "Remove (Wastage/Usage)";
+                document.getElementById('div-supplier').classList.add('hidden');
+                document.getElementById('div-cost').classList.add('hidden');
+                document.getElementById('div-reason').classList.remove('hidden');
+
+                btnConfirm.className = "w-full bg-brand-red hover:bg-red-700 text-white py-3 rounded-lg font-bold shadow-lg transition";
+                btnConfirm.innerText = "CONFIRM REMOVAL";
+            }
+            calculateNewStock();
+        }
+
+        function calculateNewStock() {
+            if(!currentItem) return;
+            const inputQty = parseFloat(document.getElementById('inp-qty').value) || 0;
+            const current = parseFloat(currentItem.stock);
+            
+            let final = 0;
+            if(currentStockMode === 'in') final = current + inputQty;
+            else final = current - inputQty;
+
+            document.getElementById('lbl-new-stock').innerText = final.toFixed(2) + ' ' + currentItem.unit;
+        }
+
+        async function confirmStockUpdate() {
+            const qty = parseFloat(document.getElementById('inp-qty').value);
+            if(!qty || qty <= 0) return alert("Please enter a valid quantity");
+            
+            const btn = document.getElementById('btn-confirm');
+            btn.innerText = "Updating...";
+            btn.disabled = true;
+
+            try {
+                const newStock = currentStockMode === 'in' 
+                    ? currentItem.stock + qty 
+                    : currentItem.stock - qty;
+
+                const updatePayload = { 
+                    stock: newStock,
+                    last_updated: new Date().toISOString()
+                };
+
+                // If stock in, potentially update cost and supplier
+                if(currentStockMode === 'in') {
+                    const newCost = document.getElementById('inp-new-cost').value;
+                    const supplier = document.getElementById('inp-supplier').value;
+                    if(newCost) updatePayload.cost_per_unit = parseFloat(newCost);
+                    if(supplier) updatePayload.supplier_info = supplier;
+                }
+
+                const { error } = await supabase
+                    .from('inventory')
+                    .update(updatePayload)
+                    .eq('id', currentItem.id);
+
+                if(error) throw error;
+
+                // Success
+                closeStockModal();
+                fetchInventory();
+                alert(currentStockMode === 'in' ? "Stock Added Successfully!" : "Stock Removed/Wastage Logged.");
+
+            } catch (err) {
+                alert("Error updating stock: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "CONFIRM UPDATE";
+            }
+        }
+
+        // --- CRUD ITEM LOGIC ---
+
+        function openItemModal() {
+            document.getElementById('edit-id').value = '';
+            document.getElementById('edit-name').value = '';
+            document.getElementById('edit-stock').value = '';
+            document.getElementById('edit-unit').value = '';
+            document.getElementById('edit-cost').value = '';
+            document.getElementById('edit-min').value = '';
+            document.getElementById('edit-supplier').value = '';
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function editItem(id) {
+            const item = inventory.find(i => i.id === id);
+            if(!item) return;
+            
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('edit-name').value = item.name;
+            document.getElementById('edit-stock').value = item.stock;
+            document.getElementById('edit-unit').value = item.unit;
+            document.getElementById('edit-cost').value = item.cost_per_unit;
+            document.getElementById('edit-min').value = item.minimum_stock;
+            document.getElementById('edit-supplier').value = item.supplier_info;
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        async function saveItem() {
+            const id = document.getElementById('edit-id').value;
+            const payload = {
+                name: document.getElementById('edit-name').value,
+                stock: parseFloat(document.getElementById('edit-stock').value) || 0,
+                unit: document.getElementById('edit-unit').value,
+                cost_per_unit: parseFloat(document.getElementById('edit-cost').value) || 0,
+                minimum_stock: parseFloat(document.getElementById('edit-min').value) || 0,
+                supplier_info: document.getElementById('edit-supplier').value
+            };
+
+            if(!payload.name || !payload.unit) return alert("Name and Unit are required");
+
+            try {
+                let error;
+                if(id) {
+                    const res = await supabase.from('inventory').update(payload).eq('id', id);
+                    error = res.error;
+                } else {
+                    const res = await supabase.from('inventory').insert(payload);
+                    error = res.error;
+                }
+
+                if(error) throw error;
+
+                document.getElementById('itemModal').classList.add('hidden');
+                fetchInventory();
+
+            } catch (err) {
+                alert("Error saving item: " + err.message);
+            }
+        }
+
+    </script>
+</body>
+</html>

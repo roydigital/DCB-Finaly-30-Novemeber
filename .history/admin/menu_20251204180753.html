@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Menu & Recipe Manager</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gray: '#f3f4f6',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Manager Console</span>
+            </div>
+        </div>
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders</a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg"><i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager</a>
+            <a href="inventory.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Inventory</a>
+            <a href="customers.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-users w-5 text-center"></i> Customers</a>
+            <a href="history.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> History</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                <span class="font-display font-bold text-xl">MENU</span>
+            </div>
+            <div class="hidden md:flex flex-col">
+                <h2 class="text-xl font-bold font-display text-brand-dark">MENU & RECIPES</h2>
+                <span class="text-xs text-gray-500">Link dishes to inventory for auto-deduction</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterItems()" placeholder="Search items..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:border-brand-red w-48 md:w-64 transition">
+                </div>
+                <button onclick="openModal()" class="bg-brand-red hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition transform hover:scale-105">
+                    <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add Item</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-brand-gray">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
+                            <th class="p-4 font-semibold">Item Details</th>
+                            <th class="p-4 font-semibold">Category</th>
+                            <th class="p-4 font-semibold">Prices</th>
+                            <th class="p-4 font-semibold text-center">Recipe Status</th>
+                            <th class="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="menu-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="itemDrawer" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-lg w-full bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col" id="drawerPanel">
+            
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold font-display text-gray-800" id="drawerTitle">New Item</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <input type="hidden" id="edit-id">
+
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button onclick="switchTab('basic')" id="tab-basic" class="flex-1 pb-2 border-b-2 border-brand-red font-bold text-brand-red">Basic Info</button>
+                    <button onclick="switchTab('recipe')" id="tab-recipe" class="flex-1 pb-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700">Recipe / Stock</button>
+                </div>
+
+                <div id="content-basic" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Image URL</label>
+                        <input type="text" id="inp-image" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none text-sm" placeholder="Paste image link here">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Item Name</label>
+                            <input type="text" id="inp-name" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Category</label>
+                            <input type="text" id="inp-category" list="category-list" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none">
+                            <datalist id="category-list"></datalist>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Stock Status</label>
+                            <select id="inp-stock" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none bg-white">
+                                <option value="true">In Stock</option>
+                                <option value="false">Out of Stock</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
+                            <span>Selling Prices</span>
+                            <button onclick="addVariantRow()" class="text-xs text-brand-red font-bold">+ Add Size</button>
+                        </label>
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2" id="pricing-container"></div>
+                    </div>
+                </div>
+
+                <div id="content-recipe" class="space-y-4 hidden">
+                    <div class="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Add ingredients used to make <strong>1 Unit</strong> of this item. Stock will be deducted automatically when sold.
+                    </div>
+
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Ingredient</label>
+                            <select id="recipe-ingredient-select" class="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:border-brand-red">
+                                <option value="">Select Inventory Item...</option>
+                                </select>
+                        </div>
+                        <div class="w-24">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Qty Needed</label>
+                            <input type="number" id="recipe-qty-input" placeholder="0.0" class="w-full p-2 border rounded text-sm focus:outline-none focus:border-brand-red">
+                        </div>
+                        <button onclick="addRecipeItem()" class="bg-brand-dark text-white p-2 rounded w-10 h-[38px] flex items-center justify-center hover:bg-gray-800">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Recipe</label>
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-500">
+                                    <tr><th class="p-2">Ingredient</th><th class="p-2">Qty</th><th class="p-2 text-center">Action</th></tr>
+                                </thead>
+                                <tbody id="recipe-list-body" class="divide-y divide-gray-100">
+
+                <!-- Image Upload & Preview -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700">Item Image</label>
+                    
+                    <!-- Drag & Drop Area -->
+                    <div id="drop-area" 
+                         class="relative group h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center overflow-hidden transition-all hover:border-brand-red hover:bg-gray-50 cursor-pointer"
+                         role="button"
+                         tabindex="0"
+                         aria-label="Drag and drop area for image upload. Click or drop an image file here."
+                         onkeydown="if(event.key === 'Enter' || event.key === ' ') document.getElementById('file-input').click()">
+                        <img id="preview-img" src="" alt="Image preview" class="absolute inset-0 w-full h-full object-cover hidden z-10">
+                        <div id="upload-content" class="text-center p-4 z-20">
+                            <i class="fa-solid fa-cloud-arrow-up text-gray-400 text-3xl mb-2" aria-hidden="true"></i>
+                            <p class="text-sm font-medium text-gray-700 mb-1">Drag & drop image here</p>
+                            <p class="text-xs text-gray-500">or click to browse</p>
+                            <p class="text-xs text-gray-400 mt-2">Supports JPG, PNG, WebP (Max 5MB)</p>
+                        </div>
+                        <div id="upload-progress" class="hidden absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-30">
+                            <div class="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin mb-2" aria-hidden="true"></div>
+                            <p class="text-white text-sm font-medium">Uploading...</p>
+                            <p id="upload-percent" class="text-white text-xs"></p>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*" class="hidden" aria-label="Select image file">
+                    </div>
+
+                    <!-- URL Input (Auto-filled after upload) -->
+                    <div class="flex gap-2">
+                        <input type="text" id="inp-image" oninput="updatePreview()" placeholder="Image URL will appear here after upload" 
+                               class="flex-1 text-sm p-2 border rounded focus:border-brand-red focus:outline-none" readonly>
+                        <button onclick="copyImageUrl()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-sm transition" title="Copy URL">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button onclick="clearImage()" class="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded text-sm transition" title="Clear">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <p class="text-xs text-gray-400">Upload to Supabase Storage → menu-images bucket</p>
+                        <button onclick="document.getElementById('file-input').click()" class="text-xs text-brand-red font-bold hover:underline">
+                            <i class="fa-solid fa-upload mr-1"></i> Browse Files
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Basic Info -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                        <input type="text" id="inp-name" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none font-bold" placeholder="e.g. Butter Chicken">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <input type="text" id="inp-category" list="category-list" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none uppercase text-sm" placeholder="e.g. GRAVY">
+                        <datalist id="category-list">
+                            <!-- Populated via JS -->
+                        </datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="inp-stock" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none bg-white" aria-label="Item stock status">
+                            <option value="true">In Stock</option>
+                            <option value="false">Out of Stock</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Pricing Builder (JSONB) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
+                        <span>Pricing Variants</span>
+                        <button onclick="addVariantRow()" class="text-xs text-brand-red font-bold hover:underline">+ Add Variant</button>
+                    </label>
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2" id="pricing-container">
+                        <!-- Variant Rows Injected Here -->
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">e.g. Label: "Half", Price: "199"</p>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea id="inp-desc" rows="3" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none text-sm" placeholder="Describe the taste..."></textarea>
+                </div>
+
+            </div>
+
+            <!-- Drawer Footer -->
+            <div class="p-6 border-t border-gray-200 bg-gray-50">
+                <button onclick="saveItem()" id="btn-save" class="w-full bg-brand-red text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg">
+                    SAVE ITEM
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/60">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full text-center shadow-2xl">
+            <i class="fa-solid fa-triangle-exclamation text-brand-red text-4xl mb-4"></i>
+            <h3 class="text-lg font-bold mb-2">Delete Item?</h3>
+            <p class="text-gray-600 text-sm mb-6">Are you sure you want to delete <span id="del-item-name" class="font-bold"></span>? This cannot be undone.</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100">Cancel</button>
+                <button onclick="confirmDelete()" id="btn-confirm-delete" class="px-4 py-2 bg-brand-red text-white rounded hover:bg-red-700 font-bold">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- STATE ---
+        let menuItems = [];
+        let deleteTargetId = null;
+
+        // --- INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMenu();
+        });
+
+        // --- FETCH ---
+        async function fetchMenu() {
+            const tableBody = document.getElementById('menu-table-body');
+            try {
+                const { data, error } = await supabase
+                    .from('menu_items')
+                    .select('*')
+                    .order('category', { ascending: true });
+
+                if (error) throw error;
+
+                menuItems = data;
+                renderMenu(data);
+                updateStats(data);
+                updateCategoryDatalist(data);
+
+            } catch (err) {
+                console.error('Error fetching menu:', err);
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-red-500">Error loading menu: ${err.message}</td></tr>`;
+            }
+        }
+
+        // --- RENDER ---
+        function renderMenu(items) {
+            const tableBody = document.getElementById('menu-table-body');
+            
+            if (items.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-gray-400">No items found. Add one!</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = items.map(item => {
+                // Format prices for display
+                const prices = Object.entries(item.prices || {}).map(([k, v]) => 
+                    `<span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mr-1 mb-1 border border-gray-200">
+                        ${k}: ₹${v}
+                    </span>`
+                ).join('');
+
+                return `
+                <tr class="hover:bg-gray-50 transition border-b border-gray-100 group">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded bg-gray-200 overflow-hidden flex-shrink-0 border border-gray-300">
+                                ${item.image_url 
+                                    ? `<img src="${item.image_url}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/100?text=No+Img'">` 
+                                    : `<div class="flex items-center justify-center h-full text-gray-400"><i class="fa-solid fa-utensils"></i></div>`}
+                            </div>
+                            <div>
+                                <div class="font-bold text-gray-800">${item.name}</div>
+                                <div class="text-xs text-gray-400 truncate max-w-[200px]">${item.description || 'No description'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 bg-brand-cream text-brand-dark text-xs font-bold rounded uppercase tracking-wider border border-orange-200">
+                            ${item.category}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <div class="flex flex-wrap max-w-xs">
+                            ${prices}
+                        </div>
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="toggleStock('${item.id}', ${!item.in_stock})" 
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${item.in_stock ? 'bg-green-500' : 'bg-gray-300'}">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${item.in_stock ? 'translate-x-6' : 'translate-x-1'}"></span>
+                        </button>
+                    </td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
+                            <button onclick="editItem('${item.id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button onclick="promptDelete('${item.id}')" class="p-2 text-red-600 hover:bg-red-50 rounded" title="Delete">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        // --- STATS ---
+        function updateStats(items) {
+            document.getElementById('stat-total').innerText = items.length;
+            document.getElementById('stat-active').innerText = items.filter(i => i.in_stock).length;
+            const cats = new Set(items.map(i => i.category));
+            document.getElementById('stat-cats').innerText = cats.size;
+        }
+
+        function updateCategoryDatalist(items) {
+            const cats = new Set(items.map(i => i.category));
+            const dl = document.getElementById('category-list');
+            dl.innerHTML = Array.from(cats).map(c => `<option value="${c}">`).join('');
+        }
+
+        // --- FILTER ---
+        function filterItems() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = menuItems.filter(item => 
+                item.name.toLowerCase().includes(query) || 
+                item.category.toLowerCase().includes(query)
+            );
+            renderMenu(filtered);
+        }
+
+        // --- STOCK TOGGLE ---
+        async function toggleStock(id, newStatus) {
+            try {
+                // Optimistic update
+                const idx = menuItems.findIndex(i => i.id === id);
+                if(idx > -1) menuItems[idx].in_stock = newStatus;
+                renderMenu(menuItems); // re-render immediately
+
+                const { error } = await supabase.from('menu_items').update({ in_stock: newStatus }).eq('id', id);
+                if(error) throw error;
+                updateStats(menuItems);
+
+            } catch (err) {
+                console.error("Toggle failed", err);
+                alert("Failed to update stock status");
+                fetchMenu(); // Revert
+            }
+        }
+
+        // --- DRAWER ACTIONS ---
+
+        function openModal(isEdit = false) {
+            const drawer = document.getElementById('itemDrawer');
+            const panel = document.getElementById('drawerPanel');
+            
+            if(!isEdit) resetForm();
+
+            drawer.classList.remove('hidden');
+            // Slight delay for animation
+            setTimeout(() => {
+                panel.classList.remove('translate-x-full');
+            }, 10);
+        }
+
+        function closeModal() {
+            const drawer = document.getElementById('itemDrawer');
+            const panel = document.getElementById('drawerPanel');
+            
+            panel.classList.add('translate-x-full');
+            setTimeout(() => {
+                drawer.classList.add('hidden');
+            }, 300);
+        }
+
+        function addVariantRow(key = '', val = '') {
+            const container = document.getElementById('pricing-container');
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-center variant-row";
+            div.innerHTML = `
+                <input type="text" placeholder="Label (e.g. Half)" value="${key}" class="var-key w-1/2 p-2 border rounded text-sm focus:border-brand-red focus:outline-none">
+                <input type="number" placeholder="Price" value="${val}" class="var-val w-1/3 p-2 border rounded text-sm focus:border-brand-red focus:outline-none">
+                <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-trash"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function resetForm() {
+            document.getElementById('drawerTitle').innerText = "New Item";
+            document.getElementById('edit-id').value = "";
+            document.getElementById('inp-name').value = "";
+            document.getElementById('inp-category').value = "";
+            document.getElementById('inp-image').value = "";
+            document.getElementById('inp-desc').value = "";
+            document.getElementById('inp-stock').value = "true";
+            document.getElementById('pricing-container').innerHTML = "";
+            addVariantRow("Standard", ""); // Default row
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const url = document.getElementById('inp-image').value;
+            const img = document.getElementById('preview-img');
+            if(url) {
+                img.src = url;
+                img.classList.remove('hidden');
+            } else {
+                img.classList.add('hidden');
+            }
+        }
+
+        // --- EDIT ---
+        function editItem(id) {
+            const item = menuItems.find(i => i.id === id);
+            if(!item) return;
+
+            document.getElementById('drawerTitle').innerText = "Edit Item";
+            document.getElementById('edit-id').value = item.id;
+            document.getElementById('inp-name').value = item.name;
+            document.getElementById('inp-category').value = item.category;
+            document.getElementById('inp-image').value = item.image_url || '';
+            document.getElementById('inp-desc').value = item.description || '';
+            document.getElementById('inp-stock').value = item.in_stock.toString();
+
+            // Populate variants
+            const container = document.getElementById('pricing-container');
+            container.innerHTML = "";
+            if(item.prices) {
+                Object.entries(item.prices).forEach(([k, v]) => addVariantRow(k, v));
+            } else {
+                addVariantRow();
+            }
+
+            updatePreview();
+            openModal(true);
+        }
+
+        // --- SAVE (CREATE/UPDATE) ---
+        async function saveItem() {
+            const btn = document.getElementById('btn-save');
+            const originalText = btn.innerText;
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            try {
+                // Collect Form Data
+                const id = document.getElementById('edit-id').value;
+                const name = document.getElementById('inp-name').value;
+                const category = document.getElementById('inp-category').value.toUpperCase(); // normalize cats
+                const image_url = document.getElementById('inp-image').value;
+                const description = document.getElementById('inp-desc').value;
+                const in_stock = document.getElementById('inp-stock').value === 'true';
+
+                // Collect Prices
+                const priceRows = document.querySelectorAll('.variant-row');
+                const prices = {};
+                priceRows.forEach(row => {
+                    const k = row.querySelector('.var-key').value.trim();
+                    const v = row.querySelector('.var-val').value.trim();
+                    if(k && v) prices[k] = parseFloat(v);
+                });
+
+                if(!name || !category || Object.keys(prices).length === 0) {
+                    alert("Name, Category, and at least one Price are required.");
+                    throw new Error("Validation failed");
+                }
+
+                const payload = { name, category, prices, image_url, description, in_stock };
+
+                let error;
+                if (id) {
+                    // Update
+                    const res = await supabase.from('menu_items').update(payload).eq('id', id);
+                    error = res.error;
+                } else {
+                    // Insert
+                    const res = await supabase.from('menu_items').insert(payload);
+                    error = res.error;
+                }
+
+                if (error) throw error;
+
+                closeModal();
+                fetchMenu(); // Refresh table
+
+            } catch (err) {
+                console.error("Save failed", err);
+                if(err.message !== "Validation failed") alert("Error saving item: " + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // --- DELETE ---
+        function promptDelete(id) {
+            const item = menuItems.find(i => i.id === id);
+            deleteTargetId = id;
+            document.getElementById('del-item-name').innerText = item.name;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            deleteTargetId = null;
+        }
+
+        async function confirmDelete() {
+            if(!deleteTargetId) return;
+            const btn = document.getElementById('btn-confirm-delete');
+            btn.innerText = "...";
+            
+            try {
+                const { error } = await supabase.from('menu_items').delete().eq('id', deleteTargetId);
+                if(error) throw error;
+                
+                closeDeleteModal();
+                fetchMenu();
+            } catch (err) {
+                alert("Delete failed: " + err.message);
+            } finally {
+                btn.innerText = "Delete";
+            }
+        }
+
+        // ============================================
+        // IMAGE UPLOAD FUNCTIONALITY (DRAG & DROP)
+        // ============================================
+
+        // Initialize drag & drop when drawer opens
+        function initImageUpload() {
+            const dropArea = document.getElementById('drop-area');
+            const fileInput = document.getElementById('file-input');
+            const uploadContent = document.getElementById('upload-content');
+            const previewImg = document.getElementById('preview-img');
+
+            if (!dropArea || !fileInput) return;
+
+            // Prevent default drag behaviors
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            // Highlight drop area when item is dragged over it
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            // Handle dropped files
+            dropArea.addEventListener('drop', handleDrop, false);
+
+            // Handle file input change
+            fileInput.addEventListener('change', handleFileSelect, false);
+
+            // Click on drop area to trigger file input
+            dropArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            function highlight() {
+                dropArea.classList.add('border-brand-red', 'bg-brand-red/5');
+            }
+
+            function unhighlight() {
+                dropArea.classList.remove('border-brand-red', 'bg-brand-red/5');
+            }
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+
+            function handleFileSelect(e) {
+                const files = e.target.files;
+                handleFiles(files);
+            }
+
+            async function handleFiles(files) {
+                if (files.length === 0) return;
+                
+                const file = files[0];
+                
+                // Validate file type
+                if (!file.type.match('image.*')) {
+                    alert('Please select an image file (JPG, PNG, WebP)');
+                    return;
+                }
+                
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    return;
+                }
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    previewImg.classList.remove('hidden');
+                    uploadContent.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+                
+                // Upload to Supabase
+                await uploadToSupabase(file);
+            }
+        }
+
+        // Upload file to Supabase Storage
+        async function uploadToSupabase(file) {
+            const progressDiv = document.getElementById('upload-progress');
+            const percentText = document.getElementById('upload-percent');
+            const imageInput = document.getElementById('inp-image');
+            
+            try {
+                // Show progress
+                progressDiv.classList.remove('hidden');
+                
+                // Generate unique filename
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `menu-images/${fileName}`;
+                
+                // Upload to Supabase Storage
+                // Note: Bucket name should be 'files' (lowercase) as per user's requirement
+                const { data, error } = await supabase.storage
+                    .from('files')
+                    .upload(filePath, file, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+                
+                if (error) {
+                    // Check if bucket doesn't exist or needs configuration
+                    if (error.message.includes('bucket') || error.message.includes('not found')) {
+                        throw new Error(`Storage bucket 'files' may not exist. Please create a bucket named 'files' in Supabase Storage with public permissions.`);
+                    }
+                    throw error;
+                }
+                
+                // Get public URL
+                const { data: urlData } = supabase.storage
+                    .from('files')
+                    .getPublicUrl(filePath);
+                
+                const publicUrl = urlData.publicUrl;
+                
+                // Update image input field
+                imageInput.value = publicUrl;
+                updatePreview();
+                
+                // Show success message
+                setTimeout(() => {
+                    progressDiv.innerHTML = `
+                        <div class="text-center">
+                            <i class="fa-solid fa-check-circle text-green-400 text-3xl mb-2"></i>
+                            <p class="text-white text-sm font-medium">Upload Complete!</p>
+                            <p class="text-white text-xs">Image URL: ${fileName}</p>
+                        </div>
+                    `;
+                    
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                        progressDiv.classList.add('hidden');
+                        progressDiv.innerHTML = `
+                            <div class="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <p class="text-white text-sm font-medium">Uploading...</p>
+                            <p id="upload-percent" class="text-white text-xs"></p>
+                        `;
+                    }, 2000);
+                }, 500);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert(`Upload failed: ${error.message}\n\nPlease ensure:\n1. Supabase Storage bucket 'files' exists\n2. Bucket has public permissions\n3. CORS is configured for your domain`);
+                progressDiv.classList.add('hidden');
+                
+                // Reset preview
+                document.getElementById('preview-img').classList.add('hidden');
+                document.getElementById('upload-content').classList.remove('hidden');
+            }
+        }
+
+        // Copy image URL to clipboard
+        function copyImageUrl() {
+            const imageInput = document.getElementById('inp-image');
+            if (!imageInput.value) {
+                alert('No image URL to copy');
+                return;
+            }
+            
+            navigator.clipboard.writeText(imageInput.value)
+                .then(() => {
+                    // Show temporary feedback
+                    const btn = event.target.closest('button');
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    btn.classList.add('bg-green-100', 'text-green-600');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('bg-green-100', 'text-green-600');
+                    }, 2000);
+                })
+                .catch(err => {
+                    console.error('Copy failed:', err);
+                    alert('Failed to copy URL');
+                });
+        }
+
+        // Clear image selection
+        function clearImage() {
+            document.getElementById('inp-image').value = '';
+            document.getElementById('preview-img').classList.add('hidden');
+            document.getElementById('upload-content').classList.remove('hidden');
+            document.getElementById('file-input').value = '';
+            updatePreview();
+        }
+
+        // Initialize upload functionality when modal opens
+        const originalOpenModal = openModal;
+        openModal = function(isEdit = false) {
+            originalOpenModal(isEdit);
+            // Small delay to ensure DOM is ready
+            setTimeout(() => {
+                initImageUpload();
+            }, 50);
+        };
+
+        // Also initialize when editing
+        const originalEditItem = editItem;
+        editItem = function(id) {
+            originalEditItem(id);
+            setTimeout(() => {
+                initImageUpload();
+            }, 50);
+        };
+
+    </script>
+</body>
+</html>

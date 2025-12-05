@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB POS | Takeaway Terminal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/mousetrap@1.6.5/mousetrap.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',    // DCB Primary Red
+                            dark: '#1F2937',   // DCB Primary Dark (from #1F2937)
+                            cream: '#F4F1EA',  // DCB Cream (from #F4F1EA)
+                            gold: '#F59E0B',   // Accent Gold
+                            gray: '#e5e7eb',
+                            green: '#15803d',
+                            subtle: {
+                                dark: '#374151',
+                                gray: '#9ca3af',
+                                light: '#f9fafb'
+                            }
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'], // Headings
+                        body: ['Roboto', 'sans-serif'],    // Text
+                    },
+                    boxShadow: {
+                        'card': '0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.04)',
+                        'floating': '0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 10px -3px rgba(0, 0, 0, 0.05)',
+                        'subtle': '0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03)'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .pos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Slightly wider cards */
+            gap: 1rem;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .ticket-pattern {
+            background-color: #ffffff;
+            background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+            background-size: 12px 12px;
+        }
+
+        /* Custom Scrollbar for lists */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-brand-cream h-screen overflow-hidden font-body flex flex-col md:flex-row text-gray-700">
+
+    <div class="flex-1 flex flex-col h-full relative border-r border-gray-200">
+        
+        <div class="bg-white z-20 shadow-subtle">
+            <div class="p-3 border-b border-gray-100 flex gap-3 items-center bg-white">
+                <a href="admin.html" class="w-10 h-10 bg-brand-red rounded-lg flex items-center justify-center text-white hover:bg-red-700 transition shadow-md">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500"></i>
+                    <input type="text" id="pos-search" placeholder="Search Menu (Alt+S)..." class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-red focus:border-brand-red text-gray-800 placeholder-gray-500 font-medium tracking-wide">
+                </div>
+            </div>
+
+            <div class="flex overflow-x-auto p-3 gap-2 no-scrollbar bg-white border-b border-gray-100 shadow-subtle" id="category-bar">
+                </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 bg-brand-cream relative" id="menu-container">
+            <div class="pos-grid" id="menu-grid">
+                </div>
+        </div>
+
+        <div class="bg-white border-t border-gray-200 text-gray-500 px-4 py-2 text-xs font-medium flex justify-between items-center shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
+            <span class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div> SYSTEM ONLINE</span>
+            <span class="font-mono text-gray-600">TERMINAL: POS-01 (TAKEAWAY)</span>
+        </div>
+    </div>
+
+    <div class="w-full md:w-[420px] bg-white shadow-xl z-30 flex flex-col h-full relative">
+        
+        <div class="p-5 bg-brand-red text-white shadow-md z-10">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-display font-semibold text-xl tracking-wide flex items-center gap-2">
+                    <i class="fa-solid fa-user"></i> CUSTOMER
+                </h3>
+                <span class="bg-white/20 px-3 py-1 rounded text-xs font-medium border border-white/20 uppercase tracking-wider" id="customer-status">Guest</span>
+            </div>
+            
+            <div class="relative mb-3">
+                <i class="fa-solid fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300 text-sm z-10"></i>
+                <input type="tel" id="cust-phone" onkeyup="checkCustomer()" placeholder="Mobile Number" class="w-full pl-9 pr-3 py-2.5 rounded text-gray-800 font-medium focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner bg-white">
+                <div id="cust-found-badge" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-green-500 hidden">
+                    <i class="fa-solid fa-circle-check text-lg"></i>
+                </div>
+            </div>
+            <input type="text" id="cust-name" placeholder="Customer Name" class="w-full px-3 py-2.5 rounded text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 shadow-inner bg-white/95">
+        </div>
+
+        <div class="grid grid-cols-3 bg-gray-50 p-1 gap-1 border-b border-gray-200">
+            <button onclick="setOrderType('Pickup')" id="btn-Pickup" class="py-2 text-xs font-medium uppercase tracking-wider rounded bg-brand-dark text-white shadow-sm transition-all">Takeaway</button>
+            <button onclick="setOrderType('dining')" id="btn-dining" class="py-2 text-xs font-medium uppercase tracking-wider rounded text-gray-600 hover:bg-white hover:text-brand-dark transition-all">Dining</button>
+            <button onclick="setOrderType('Delivery')" id="btn-Delivery" class="py-2 text-xs font-medium uppercase tracking-wider rounded text-gray-600 hover:bg-white hover:text-brand-dark transition-all">Delivery</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 ticket-pattern space-y-2" id="cart-list">
+            <div class="h-full flex flex-col items-center justify-center text-gray-400">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <i class="fa-solid fa-basket-shopping text-2xl text-gray-300"></i>
+                </div>
+                <p class="font-display font-medium text-base text-gray-500">READY TO ORDER</p>
+            </div>
+        </div>
+
+        <div class="bg-white border-t border-gray-100 p-5 shadow-[0_-5px_25px_rgba(0,0,0,0.03)] z-20">
+            
+            <div class="flex justify-between items-end mb-4 border-b border-dashed border-gray-200 pb-4">
+                <span class="text-gray-600 font-medium text-sm uppercase tracking-wider">Total Payable</span>
+                <span id="lbl-total" class="font-display font-semibold text-4xl text-brand-red leading-none">₹0</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mb-4">
+                <button onclick="setPayMode('cash')" id="pm-cash" class="pay-btn active group bg-brand-dark text-white border border-brand-dark py-3 rounded-lg font-medium text-xs flex flex-col items-center gap-1 shadow-md">
+                    <i class="fa-solid fa-money-bill-wave text-lg group-hover:scale-110 transition"></i> CASH
+                </button>
+                <button onclick="setPayMode('upi')" id="pm-upi" class="pay-btn group bg-white text-gray-600 border border-gray-200 py-3 rounded-lg font-medium text-xs flex flex-col items-center gap-1 hover:border-brand-red hover:text-brand-red transition">
+                    <i class="fa-solid fa-qrcode text-lg group-hover:scale-110 transition"></i> UPI
+                </button>
+                <button onclick="setPayMode('card')" id="pm-card" class="pay-btn group bg-white text-gray-600 border border-gray-200 py-3 rounded-lg font-medium text-xs flex flex-col items-center gap-1 hover:border-brand-red hover:text-brand-red transition">
+                    <i class="fa-solid fa-credit-card text-lg group-hover:scale-110 transition"></i> CARD
+                </button>
+            </div>
+
+            <button onclick="handlePosCheckout()" id="btn-checkout" class="w-full bg-brand-green hover:bg-green-600 text-white py-4 rounded-xl font-display font-semibold text-xl tracking-wide shadow-md hover:shadow-lg flex items-center justify-center gap-3 transition transform active:scale-[0.98]">
+                <span>PLACE ORDER</span>
+                <i class="fa-solid fa-circle-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="variantModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-brand-dark/70 backdrop-blur-sm p-4 transition-all">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full overflow-hidden transform scale-100 border-t-4 border-brand-red">
+            <div class="p-5 border-b border-gray-100 text-center">
+                <h3 class="font-display font-semibold text-2xl text-brand-dark" id="variantModalTitle">Select Portion</h3>
+                <p class="text-xs text-gray-500 mt-1">Choose your preferred variation</p>
+            </div>
+            <div class="p-4 space-y-2 max-h-60 overflow-y-auto" id="variantOptions">
+                </div>
+            <div class="p-4 bg-gray-50 flex justify-center">
+                <button onclick="closeVariantModal()" class="text-gray-600 hover:text-brand-red font-medium text-sm">Cancel Selection</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. CONFIGURATION
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // State Variables
+        let cart = [];
+        let menuItems = []; 
+        let currentOrderType = 'Pickup';
+        let currentPayMode = 'cash';
+
+        // 2. INITIALIZATION
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMenu(); // Fetch items from Supabase or hardcode for now
+            document.getElementById('pos-search').focus();
+            
+            // Mousetrap Shortcuts
+            Mousetrap.bind(['alt+s'], function(e) { 
+                e.preventDefault(); 
+                document.getElementById('pos-search').focus(); 
+            });
+        });
+
+        // 3. FETCH MENU (Using your existing menu logic)
+        async function fetchMenu() {
+            // NOTE: Ensure you have a 'menu_items' table. If not, use this dummy data to test UI.
+            const { data, error } = await supabase.from('menu_items').select('*').eq('in_stock', true);
+            
+            if (error || !data || data.length === 0) {
+                console.log("Using fallback data for menu");
+                // FALLBACK DATA IF TABLE IS EMPTY
+                menuItems = [
+                    { id: 1, name: 'Cheese Burger', category: 'Burgers', prices: { 'Regular': 120 } },
+                    { id: 2, name: 'Chicken Wings', category: 'Sides', prices: { '6pcs': 150, '12pcs': 280 } },
+                    { id: 3, name: 'Coke', category: 'Drinks', prices: { '300ml': 40 } }
+                ];
+            } else {
+                menuItems = data;
+            }
+            renderMenu();
+        }
+
+        // 4. RENDER MENU GRID
+        function renderMenu(filterCat = 'All') {
+            const grid = document.getElementById('menu-grid');
+            const search = document.getElementById('pos-search').value.toLowerCase();
+            
+            // Unique Categories
+            const categories = ['All', ...new Set(menuItems.map(i => i.category))];
+            
+            // Render Category Bar with Brand Styling
+            document.getElementById('category-bar').innerHTML = categories.map(cat => `
+                <button onclick="renderMenu('${cat}')" class="px-5 py-2 rounded-full text-sm font-medium font-display uppercase tracking-wider transition whitespace-nowrap border
+                ${filterCat === cat ? 'bg-brand-red text-white border-brand-red shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-red hover:text-brand-red'}">
+                    ${cat}
+                </button>
+            `).join('');
+
+            // Filter Logic
+            const filtered = menuItems.filter(item => {
+                const matchesCat = filterCat === 'All' || item.category === filterCat;
+                const matchesSearch = item.name.toLowerCase().includes(search);
+                return matchesCat && matchesSearch;
+            });
+
+            // Render Cards with Brand Styling
+            grid.innerHTML = filtered.map(item => {
+                const variants = Object.entries(item.prices || {});
+                
+                return `
+                <div onclick="showVariantModal('${item.id}', '${item.name}', '${item.category}')" 
+                     class="bg-white rounded-xl shadow-card hover:shadow-floating p-4 cursor-pointer border border-transparent hover:border-brand-red transition-all duration-200 h-36 flex flex-col justify-between group relative overflow-hidden">
+                    
+                    <div class="absolute -right-4 -top-4 w-12 h-12 bg-brand-cream rounded-full group-hover:bg-red-50 transition-colors"></div>
+
+                    <div class="relative z-10">
+                        <div class="text-[10px] font-medium text-gray-500 uppercase tracking-widest mb-1">${item.category}</div>
+                        <h4 class="font-display font-semibold text-gray-700 text-lg leading-tight group-hover:text-brand-red transition-colors">${item.name}</h4>
+                    </div>
+                    <div class="flex justify-between items-end mt-2 relative z-10">
+                        <div class="text-sm font-medium text-brand-dark bg-gray-100 px-2 py-1 rounded">
+                            ${variants.length > 1 ? `${variants.length} Opts` : '₹' + variants[0][1]}
+                        </div>
+                        <div class="w-8 h-8 bg-brand-dark text-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 group-hover:bg-brand-red transition-all">
+                            <i class="fa-solid fa-plus"></i>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // Search Listener
+        document.getElementById('pos-search').addEventListener('keyup', () => renderMenu());
+
+        // 5. CART FUNCTIONS
+        function addToCart(id, name, variant, price) {
+            const existing = cart.find(i => i.id == id && i.variant == variant);
+            if(existing) {
+                existing.qty++;
+            } else {
+                cart.push({ id, name, variant, price, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateQuantity(index, change) {
+            if (cart[index]) {
+                cart[index].qty += change;
+                if (cart[index].qty <= 0) {
+                    cart.splice(index, 1);
+                }
+                renderCart();
+            }
+        }
+
+        function removeFromCart(index) {
+            if (cart[index]) {
+                cart.splice(index, 1);
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-list');
+            if(cart.length === 0) {
+                container.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-gray-400">
+                        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                            <i class="fa-solid fa-basket-shopping text-2xl text-gray-300"></i>
+                        </div>
+                        <p class="font-display font-medium text-base text-gray-500">READY TO ORDER</p>
+                    </div>`;
+                document.getElementById('lbl-total').innerText = '₹0';
+                return;
+            }
+
+            container.innerHTML = cart.map((item, idx) => `
+                <div class="bg-white p-3 border border-gray-100 rounded-lg shadow-card mb-2 hover:border-brand-red/30 transition-colors group">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <div class="font-display font-semibold text-gray-700 text-lg leading-none">${item.name}</div>
+                            <div class="text-xs text-brand-red font-medium mt-1 uppercase tracking-wider">${item.variant}</div>
+                        </div>
+                        <div class="font-semibold text-gray-700 font-mono text-lg">₹${item.price * item.qty}</div>
+                    </div>
+                    <div class="flex justify-between items-center bg-gray-50 p-1 rounded-md">
+                        <div class="flex items-center gap-1">
+                            <button onclick="updateQuantity(${idx}, -1)" class="w-8 h-8 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center text-gray-600 hover:bg-brand-red hover:text-white hover:border-brand-red transition-colors">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                            <span class="font-medium text-lg w-8 text-center text-brand-dark">${item.qty}</span>
+                            <button onclick="updateQuantity(${idx}, 1)" class="w-8 h-8 bg-white border border-gray-200 rounded shadow-sm flex items-center justify-center text-gray-600 hover:bg-brand-green hover:text-white hover:border-brand-green transition-colors">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                        <button onclick="removeFromCart(${idx})" class="text-gray-500 hover:text-red-500 px-2 transition-colors" title="Remove Item">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+            document.getElementById('lbl-total').innerText = '₹' + total;
+            
+            // Auto scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // 6. CUSTOMER LOOKUP
+        async function checkCustomer() {
+            const phone = document.getElementById('cust-phone').value;
+            if (phone.length === 10) {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .eq('phone', phone)
+                    .single();
+                
+                if (data) {
+                    document.getElementById('cust-name').value = data.name;
+                    document.getElementById('customer-status').innerText = "RETURNING";
+                    document.getElementById('customer-status').className = "bg-brand-gold text-brand-dark px-3 py-1 rounded text-xs font-medium border border-yellow-300 uppercase tracking-wider";
+                    document.getElementById('cust-found-badge').classList.remove('hidden');
+                } else {
+                    document.getElementById('customer-status').innerText = "NEW GUEST";
+                    document.getElementById('customer-status').className = "bg-white/20 px-3 py-1 rounded text-xs font-medium border border-white/20 uppercase tracking-wider";
+                    document.getElementById('cust-found-badge').classList.add('hidden');
+                }
+            }
+        }
+
+        // 7. CHECKOUT LOGIC (Updated to NOT store location for walk-in orders)
+        async function handlePosCheckout() {
+            const phone = document.getElementById('cust-phone').value;
+            const name = document.getElementById('cust-name').value;
+            const total = cart.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            if (cart.length === 0) return alert("Cart is empty!");
+            if (!phone || phone.length < 10) return alert("Please enter a valid 10-digit phone number.");
+            if (!name) return alert("Please enter customer name.");
+
+            const btn = document.getElementById('btn-checkout');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
+            btn.disabled = true;
+            btn.classList.add('opacity-75');
+
+            try {
+                // Step A: Find or Create Customer
+                let customerId;
+                let { data: existingUser } = await supabase.from('customers').select('id').eq('phone', phone).single();
+                
+                if (existingUser) {
+                    customerId = existingUser.id;
+                } else {
+                    const { data: newUser, error: createError } = await supabase
+                        .from('customers')
+                        .insert([{ name: name, phone: phone }])
+                        .select()
+                        .single();
+                    if (createError) throw createError;
+                    customerId = newUser.id;
+                }
+
+                // Step B: Create Order WITHOUT location data (walk-in orders don't store location)
+                const orderData = {
+                    customer_id: customerId,
+                    items: cart, 
+                    total_amount: total,
+                    order_type: currentOrderType,
+                    payment_method: currentPayMode,
+                    status: 'pending'
+                };
+
+                // Note: Walk-in orders (dining) do NOT store location coordinates
+                // Only online orders from index.html store location
+
+                const { error: orderError } = await supabase
+                    .from('orders')
+                    .insert([orderData]);
+
+                if (orderError) throw orderError;
+
+                // Success Feedback
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Success!';
+                btn.classList.replace('bg-brand-green', 'bg-brand-dark');
+                
+                setTimeout(() => {
+                    alert("Order Placed Successfully!");
+                    location.reload(); 
+                }, 500);
+
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
+            }
+                    .insert([orderData]);
+
+                if (orderError) throw orderError;
+
+                // Success Feedback
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Success!';
+                btn.classList.replace('bg-brand-green', 'bg-brand-dark');
+                
+                setTimeout(() => {
+                    alert("Order Placed Successfully!" + (latitude ? "\nLocation captured for walk-in order." : ""));
+                    location.reload(); 
+                }, 500);
+
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message);
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+                btn.classList.remove('opacity-75');
+            }
+        }
+
+        // Helper function to get current position
+        function getCurrentPosition() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("Geolocation is not supported by your browser"));
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(
+                    resolve,
+                    reject,
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            });
+        }
+
+        // Setters
+        function setOrderType(type) { 
+            currentOrderType = type;
+            document.querySelectorAll('#btn-Pickup, #btn-dining, #btn-Delivery').forEach(b => {
+                b.className = "py-2 text-xs font-medium uppercase tracking-wider rounded text-gray-600 hover:bg-white hover:text-brand-dark transition-all";
+            });
+            document.getElementById(`btn-${type}`).className = "py-2 text-xs font-medium uppercase tracking-wider rounded bg-brand-dark text-white shadow-sm transition-all";
+            
+            const statusText = type === 'Pickup' ? 'TAKEAWAY' : type === 'dining' ? 'DINING' : 'DELIVERY';
+            document.querySelector('.font-mono').textContent = `TERMINAL: POS-01 (${statusText})`;
+        }
+
+        function setPayMode(mode) {
+            currentPayMode = mode;
+            document.querySelectorAll('.pay-btn').forEach(b => {
+                b.className = "pay-btn group bg-white text-gray-600 border border-gray-200 py-3 rounded-lg font-medium text-xs flex flex-col items-center gap-1 hover:border-brand-red hover:text-brand-red transition";
+            });
+            document.getElementById(`pm-${mode}`).className = "pay-btn active group bg-brand-dark text-white border border-brand-dark py-3 rounded-lg font-medium text-xs flex flex-col items-center gap-1 shadow-md";
+        }
+
+        // Modal Functions
+        let currentItemId = null;
+        let currentItemName = null;
+
+        function showVariantModal(id, name, category) {
+            const item = menuItems.find(i => i.id == id);
+            if (!item) return;
+
+            currentItemId = id;
+            currentItemName = name;
+
+            document.getElementById('variantModalTitle').innerText = name;
+            const variantOptions = document.getElementById('variantOptions');
+            const variants = Object.entries(item.prices || {});
+            
+            if (variants.length === 1) {
+                addToCart(id, name, variants[0][0], variants[0][1]);
+                return;
+            }
+
+            variantOptions.innerHTML = variants.map(([variant, price]) => `
+                <button onclick="selectVariant('${variant}', ${price})" 
+                        class="w-full p-4 border border-gray-200 rounded-xl hover:border-brand-red hover:bg-red-50 transition text-left flex justify-between items-center group">
+                    <span class="font-medium text-gray-700 group-hover:text-brand-red">${variant}</span>
+                    <span class="font-display font-semibold text-xl text-brand-dark">₹${price}</span>
+                </button>
+            `).join('');
+
+            document.getElementById('variantModal').classList.remove('hidden');
+        }
+
+        function selectVariant(variant, price) {
+            if (currentItemId && currentItemName) {
+                addToCart(currentItemId, currentItemName, variant, price);
+                closeVariantModal();
+            }
+        }
+
+        function closeVariantModal() {
+            document.getElementById('variantModal').classList.add('hidden');
+            currentItemId = null;
+            currentItemName = null;
+        }
+
+    </script>
+</body>
+</html>

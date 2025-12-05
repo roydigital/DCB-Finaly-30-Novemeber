@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cart Calculations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .pass { background-color: #d4edda; border-color: #c3e6cb; }
+        .fail { background-color: #f8d7da; border-color: #f5c6cb; }
+        .result { font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test Cart Calculations</h1>
+    <p>Testing GST (5%) and delivery fee (₹55 if subtotal < 499) logic</p>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        // Test cases
+        const testCases = [
+            { subtotal: 0, expectedGST: 0, expectedDelivery: 0, expectedTotal: 0, description: "Empty cart" },
+            { subtotal: 100, expectedGST: 5, expectedDelivery: 55, expectedTotal: 160, description: "Subtotal ₹100 (< 499)" },
+            { subtotal: 300, expectedGST: 15, expectedDelivery: 55, expectedTotal: 370, description: "Subtotal ₹300 (< 499)" },
+            { subtotal: 498, expectedGST: 25, expectedDelivery: 55, expectedTotal: 578, description: "Subtotal ₹498 (< 499)" },
+            { subtotal: 499, expectedGST: 25, expectedDelivery: 0, expectedTotal: 524, description: "Subtotal ₹499 (>= 499)" },

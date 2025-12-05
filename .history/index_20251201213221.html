@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB - Delhi Chicken Brothers | Online Ordering</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="asset/logo.png" type="image/png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323', // Matched from logo roughly
+                            dark: '#1D2B25', // Updated to match logo black shade
+                            cream: '#FCF1D8', // Updated to requested cream color
+                            gold: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2a3a34; /* Darker shade for dark background */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D92323; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b91c1c; 
+        }
+        .animate-bounce-short {
+            animation: bounce-short 0.3s ease-in-out 2 alternate;
+        }
+        @keyframes bounce-short {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body class="bg-brand-dark text-gray-200 font-body antialiased">
+
+    <!-- Initialize Data Modal (Hidden by default) -->
+    <div id="seedModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-brand-cream rounded-lg p-6 max-w-md w-full shadow-2xl text-center">
+            <i class="fa-solid fa-database text-4xl text-brand-red mb-4"></i>
+            <h2 class="text-2xl font-bold font-display mb-2">Setup Database?</h2>
+            <p class="text-gray-600 mb-6">Your menu appears to be empty. Would you like to upload the standard menu items (Kebabs, Curries, Rolls) to your database now?</p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="closeSeedModal()" class="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">No, Empty is fine</button>
+                <button onclick="seedDatabase()" class="px-4 py-2 bg-brand-red text-white rounded hover:bg-red-700 font-bold shadow-lg">Yes, Upload Menu</button>
+            </div>
+            <p id="seedStatus" class="mt-4 text-sm font-semibold"></p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-40 bg-brand-cream shadow-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo Area -->
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 flex items-center justify-center">
+                        <img src="asset/logo.png" alt="DCB Logo" class="h-full w-auto object-contain">
+                    </div>
+                    <div class="hidden md:block">
+                        <h1 class="text-xl font-bold font-display tracking-wide text-brand-dark leading-none">DELHI CHICKEN BROTHERS (DCB)</h1>
+                        <span class="text-xs text-brand-red font-medium tracking-widest uppercase">Authentic Taste Legacy</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <button onclick="scrollToMenu()" class="text-brand-dark hover:text-brand-red font-medium transition">Menu</button>
+                    <a href="admin/admin.html" class="text-brand-dark hover:text-brand-red font-medium transition">Admin</a>
+                </div>
+
+                <!-- Cart Icon -->
+                <div class="relative cursor-pointer" onclick="toggleCart()">
+                    <div class="p-2 hover:bg-gray-100 rounded-full transition">
+                        <i class="fa-solid fa-bag-shopping text-2xl text-brand-dark"></i>
+                    </div>
+                    <span id="cart-badge" class="absolute top-0 right-0 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transform scale-0 transition-transform duration-200">0</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative bg-brand-dark text-white overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-40"></div>
+        <div class="relative max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 text-center sm:text-left">
+            <h1 class="text-4xl md:text-6xl font-display font-bold mb-4 tracking-tight">
+                THE REAL <span class="text-brand-red">TASTE OF DELHI</span>
+            </h1>
+            <p class="text-xl text-gray-300 mb-8 max-w-2xl">
+                Experience the authentic flavors of roasted kebabs, creamy curries, and crunchy rolls. Directly from the grill to your doorstep.
+            </p>
+            <button onclick="scrollToMenu()" class="bg-brand-red hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:-translate-y-1">
+                ORDER NOW
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row gap-8 relative">
+        
+        <!-- Menu Section -->
+        <div class="flex-1">
+            <!-- Categories Filters -->
+            <div class="sticky top-20 z-30 bg-gray-800 py-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto">
+                <div class="flex space-x-2 md:flex-wrap" id="category-filters">
+                    <!-- Filters injected by JS -->
+                <div class="animate-pulse flex space-x-2">
+                    <div class="h-10 w-24 bg-gray-700 rounded-full"></div>
+                    <div class="h-10 w-24 bg-gray-700 rounded-full"></div>
+                    <div class="h-10 w-24 bg-gray-700 rounded-full"></div>
+                </div>
+                </div>
+            </div>
+
+            <!-- Menu Grid -->
+            <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-6">
+                <!-- Items injected by JS -->
+                <div class="text-center col-span-full py-10 text-gray-400">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
+                    <p>Loading delicious menu...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Sidebar (Desktop Sticky / Mobile Drawer) -->
+        <aside id="cart-sidebar" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-brand-cream shadow-2xl transform translate-x-full transition-transform duration-300 z-50 md:relative md:transform-none md:w-80 md:block md:translate-x-0 md:shadow-none md:bg-transparent hidden">
+            <div class="h-full md:h-auto md:sticky md:top-24 bg-brand-cream md:rounded-xl md:shadow-lg overflow-hidden flex flex-col">
+                
+                <!-- Cart Header -->
+                <div class="bg-brand-dark p-4 flex justify-between items-center text-white">
+                    <h2 class="font-display text-xl font-bold"><i class="fa-solid fa-basket-shopping mr-2"></i> Your Order</h2>
+                    <button class="md:hidden text-gray-300 hover:text-white" onclick="toggleCart()" title="Close cart" aria-label="Close cart">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Cart Items Area -->
+                <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh] min-h-[200px]">
+                <div class="flex flex-col items-center justify-center h-48 text-gray-400">
+                    <i class="fa-solid fa-burger text-4xl mb-2 opacity-50"></i>
+                    <p>Your cart is empty</p>
+                    <p class="text-sm">Add some yummy food!</p>
+                </div>
+                </div>
+
+                <!-- Cart Footer / Checkout -->
+                <div class="bg-gray-50 p-4 border-t border-gray-200">
+                    <div class="flex justify-between mb-2 text-sm">
+                        <span class="text-gray-600">Subtotal</span>
+                        <span class="font-bold" id="cart-subtotal">₹0</span>
+                    </div>
+                    <div class="flex justify-between mb-4 text-xl font-display font-bold text-brand-dark">
+                        <span>Total</span>
+                        <span id="cart-total">₹0</span>
+                    </div>
+
+                    <!-- Customer Details Section -->
+                    <div id="customer-section" class="space-y-3">
+                        <!-- Customer Status -->
+                        <div class="bg-gray-100 border border-gray-200 rounded p-2 flex items-center justify-between">
+                            <div class="text-xs text-gray-700">
+                                <i class="fa-solid fa-user mr-1"></i> 
+                                <span id="customer-status">NEW CUSTOMER</span>
+                            </div>
+                            <div id="customer-found-badge" class="text-green-500 hidden">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Phone Input -->
+                        <div class="relative">
+                            <i class="fa-solid fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="tel" id="cust-phone" onkeyup="checkCustomer()" placeholder="Mobile Number" 
+                                   class="w-full pl-9 pr-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm">
+                        </div>
+                        
+                        <!-- Name Input -->
+                        <input type="text" id="cust-name" placeholder="Your Name" 
+                               class="w-full px-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm">
+                        
+                        <!-- Address/Notes -->
+                        <textarea id="cust-note" placeholder="Complete Delivery Address" rows="2" 
+                                  class="w-full px-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm"></textarea>
+                        
+                        <!-- Checkout Button -->
+                        <button onclick="placeOrder()" id="checkout-btn" 
+                                class="w-full bg-brand-red text-white py-3 rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            PLACE ORDER
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Cart Toggle Button (Floating) -->
+        <div class="fixed bottom-4 right-4 z-40 md:hidden">
+            <button onclick="toggleCart()" class="bg-brand-dark text-white p-4 rounded-full shadow-xl flex items-center gap-2">
+                <div class="relative">
+                    <i class="fa-solid fa-bag-shopping text-xl"></i>
+                    <span id="mobile-cart-badge" class="absolute -top-2 -right-2 bg-brand-red text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
+                </div>
+                <span class="font-bold" id="mobile-cart-total">₹0</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Portion Selection Modal -->
+    <div id="portionModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-brand-cream rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold font-display text-brand-dark mb-2">Select Portion</h2>
+                <p class="text-gray-500 text-sm" id="portion-item-name">Choose your preferred portion size</p>
+            </div>
+            
+            <div class="space-y-3 mb-6" id="portion-options">
+                <!-- Portion options will be injected here -->
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closePortionModal()" class="flex-1 px-4 py-3 border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 font-medium transition">
+                    Cancel
+                </button>
+                <button onclick="addSelectedPortionToCart()" id="add-to-cart-btn" class="flex-1 px-4 py-3 bg-brand-red text-white rounded-xl hover:bg-red-700 font-bold transition">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="orderSuccessModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-brand-cream rounded-lg p-8 max-w-sm w-full text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-check text-green-600 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold font-display text-gray-800 mb-2">Order Placed!</h2>
+            <p class="text-gray-600 mb-6">Your order #<span id="success-order-id" class="font-mono font-bold"></span> has been received.</p>
+            <button onclick="location.reload()" class="w-full bg-brand-dark text-white py-2 rounded hover:bg-gray-800">Start New Order</button>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="bg-brand-dark text-white py-8 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <div class="font-display font-bold text-2xl mb-2">DCB</div>
+            <p class="text-gray-400 text-sm mb-4">An Authentic Taste Legacy from Delhi</p>
+            <p class="text-gray-600 text-xs">&copy; 2025 Delhi Chicken Brothers (DCB). All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Logic -->
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        // Note: In a production environment, never expose service keys. 
+        // Using the Anon key provided for client-side operations.
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- STATE ---
+        let state = {
+            menu: [],
+            cart: [],
+            categories: [],
+            activeCategory: 'All',
+            isLoading: true,
+            selectedItem: null,
+            selectedPortion: null
+        };
+
+        // --- MENU DATA (For Seeding) ---
+        // Transcribed from the uploaded image
+        const SEED_DATA = [
+            // Roasted
+            { name

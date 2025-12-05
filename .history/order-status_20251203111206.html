@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Track Order | Delhi Chicken Brothers</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#BA412D', 
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gold: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f1ea;
+        }
+        
+        /* Status Tracker Styles */
+        .status-line {
+            position: absolute;
+            top: 1.5rem;
+            left: 10%;
+            right: 10%;
+            height: 4px;
+            background-color: #e5e7eb;
+            z-index: 0;
+        }
+        .status-line-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 0%;
+            background-color: #BA412D;
+            transition: width 0.5s ease-in-out;
+        }
+        .status-item {
+            z-index: 10;
+            position: relative;
+        }
+        .status-circle {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            border: 4px solid #f4f1ea;
+            transition: all 0.3s ease;
+        }
+        
+        /* Active/Completed States */
+        .status-item.active .status-circle {
+            background-color: #BA412D;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(186, 65, 45, 0.2);
+            transform: scale(1.1);
+        }
+        .status-item.completed .status-circle {
+            background-color: #BA412D;
+            color: white;
+        }
+        
+        .status-label {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            transition: color 0.3s;
+        }
+        .status-item.active .status-label,
+        .status-item.completed .status-label {
+            color: #BA412D;
+            font-weight: 700;
+        }
+
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="container mx-auto px-4 h-16 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2">
+                <img src="asset/logo.png" alt="DCB Logo" class="h-10 w-auto">
+                <span class="font-display font-bold text-xl text-brand-dark hidden sm:block">DELHI CHICKEN BROTHERS</span>
+            </a>
+            <a href="index.html" class="text-sm font-bold text-brand-red hover:text-brand-dark transition">
+                <i data-lucide="arrow-left" class="inline w-4 h-4 mr-1"></i> Back to Menu
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-1 container mx-auto px-4 py-8">
+        <div class="max-w-2xl mx-auto space-y-6">
+            
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                <div class="bg-brand-dark text-white p-6 text-center">
+                    <p class="text-white/60 text-sm uppercase tracking-widest mb-1">Order Number</p>
+                    <h1 id="order-number-display" class="text-3xl font-display font-bold text-brand-gold tracking-wide">Loading...</h1>
+                    <p id="order-time" class="text-xs text-white/40 mt-2">Placed at --:--</p>
+                </div>
+
+                <div class="p-8 pb-12">
+                    <div class="relative flex justify-between items-center">
+                        <div class="status-line">
+                            <div id="progress-bar" class="status-line-progress"></div>
+                        </div>
+
+                        <div id="step-pending" class="status-item flex flex-col items-center">
+                            <div class="status-circle">
+                                <i data-lucide="receipt" class="w-5 h-5"></i>
+                            </div>
+                            <span class="status-label">Placed</span>
+                        </div>
+
+                        <div id="step-preparing" class="status-item flex flex-col items-center">
+                            <div class="status-circle">
+                                <i data-lucide="chef-hat" class="w-5 h-5"></i>
+                            </div>
+                            <span class="status-label">Cooking</span>
+                        </div>
+
+                        <div id="step-ready" class="status-item flex flex-col items-center">
+                            <div class="status-circle">
+                                <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                            </div>
+                            <span class="status-label">Ready</span>
+                        </div>
+
+                        <div id="step-completed" class="status-item flex flex-col items-center">
+                            <div class="status-circle">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                            <span class="status-label">Enjoy!</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-10 text-center">
+                        <div id="live-indicator" class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold mb-3 animate-pulse">
+                            <span class="w-2 h-2 bg-green-600 rounded-full"></span> LIVE UPDATES
+                        </div>
+                        <h2 id="status-heading" class="text-2xl font-bold font-display text-brand-dark">Fetching status...</h2>
+                        <p id="status-subtext" class="text-gray-500 mt-1">Please wait a moment.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="font-display font-bold text-lg mb-4 flex items-center gap-2">
+                    <i data-lucide="scroll-text" class="text-brand-red w-5 h-5"></i> Order Details
+                </h3>
+                
+                <div id="order-items-list" class="space-y-3 mb-4">
+                    <div class="animate-pulse space-y-2">
+                        <div class="h-4 bg-gray-100 rounded w-3/4"></div>
+                        <div class="h-4 bg-gray-100 rounded w-1/2"></div>
+                    </div>
+                </div>
+
+                <div class="border-t border-dashed border-gray-200 pt-4 flex justify-between items-center">
+                    <span class="text-gray-600">Total Amount (COD)</span>
+                    <span id="order-total" class="font-display font-bold text-xl text-brand-red">--</span>
+                </div>
+            </div>
+
+            <div class="text-center text-sm text-gray-500">
+                <p>Need help with this order?</p>
+                <a href="tel:8802509709" class="text-brand-dark font-bold hover:underline">Call +91 8802509709</a>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Get ID from URL (e.g., order-status.html?id=UUID)
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('id');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!orderId) {
+                window.location.href = 'index.html'; // Redirect if no ID
+                return;
+            }
+            fetchOrderDetails();
+            setupRealtime();
+        });
+
+        async function fetchOrderDetails() {
+            try {
+                // Fetch order by UUID
+                const { data: order, error } = await supabase
+                    .from('orders')
+                    .select('*')
+                    .eq('id', orderId)
+                    .single();
+
+                if (error) throw error;
+                if (!order) {
+                    alert('Order not found');
+                    return;
+                }
+
+                renderOrder(order);
+                updateStatusUI(order.status);
+
+            } catch (err) {
+                console.error("Error:", err);
+                document.getElementById('status-heading').innerText = "Error loading order";
+            }
+        }
+
+        function renderOrder(order) {
+            // Header
+            document.getElementById('order-number-display').innerText = order.order_number || 'Processing...';
+            
+            const date = new Date(order.created_at);
+            document.getElementById('order-time').innerText = `Placed at ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+            
+            // Total
+            document.getElementById('order-total').innerText = '₹' + order.total_amount;
+
+            // Items List (Parsing the JSONB)
+            const list = document.getElementById('order-items-list');
+            
+            // Handle both structure types (array or object) just in case
+            let items = order.items;
+            if (typeof items === 'string') items = JSON.parse(items);
+            if (!Array.isArray(items)) items = [];
+
+            list.innerHTML = items.map(item => `
+                <div class="flex justify-between items-start text-sm">
+                    <div>
+                        <span class="font-bold text-gray-800">${item.quantity}x</span> 
+                        <span class="text-gray-600">${item.name}</span>
+                        ${item.variant ? `<span class="text-xs text-gray-400 block ml-5">${item.variant}</span>` : ''}
+                    </div>
+                    <div class="font-medium text-gray-700">₹${item.price * item.quantity}</div>
+                </div>
+            `).join('');
+        }
+
+        function updateStatusUI(status) {
+            // Normalized statuses to lowercase
+            const s = (status || 'pending').toLowerCase();
+            
+            const stages = ['pending', 'preparing', 'ready', 'completed'];
+            
+            // 1. Find which step we are on
+            let activeIndex = stages.indexOf(s);
+
+            // 2. Handle cases where the status (e.g. 'delivered') isn't in the list
+            if (activeIndex === -1) {
+                if (s === 'delivered') activeIndex = 3; // Treat delivered as completed
+                else activeIndex = 0; // Default to pending
+            }
+
+            // 3. Update the Progress Bar Width
+            // 0 = 0%, 1 = 33%, 2 = 66%, 3 = 100%
+            const percentage = (activeIndex / (stages.length - 1)) * 100;
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+
+            // 4. Update the Circles (Red Icons)
+            stages.forEach((stage, idx) => {
+                const el = document.getElementById(`step-${stage}`);
+                // Reset classes
+                el.classList.remove('active', 'completed');
+                
+                if (idx < activeIndex) {
+                    // Steps we have already passed (turn them Red)
+                    el.classList.add('completed'); 
+                } else if (idx === activeIndex) {
+                    // The current step (Pulse Red)
+                    el.classList.add('active'); 
+                }
+                // Future steps stay gray (default CSS)
+            });
+
+            // 5. Update Text Messages
+            const heading = document.getElementById('status-heading');
+            const subtext = document.getElementById('status-subtext');
+
+            if (s === 'pending') {
+                heading.innerText = "Order Received";
+                subtext.innerText = "We are reviewing your order request.";
+            } else if (s === 'preparing') {
+                heading.innerText = "Food is Cooking!";
+                subtext.innerText = "Our chefs are working their magic.";
+            } else if (s === 'ready') {
+                heading.innerText = "Ready for Pickup/Delivery";
+                subtext.innerText = "Your food is hot and ready!";
+            } else if (s === 'completed' || s === 'delivered') {
+                heading.innerText = "Order Completed";
+                subtext.innerText = "Thank you for dining with DCB!";
+            }
+                    { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${orderId}` },
+                    (payload) => {
+                        console.log('Status update:', payload);
+                        updateStatusUI(payload.new.status);
+                        
+                        // Optional: Browser Notification
+                        if (Notification.permission === 'granted') {
+                            new Notification('Order Update', { body: `Status changed to ${payload.new.status}` });
+                        }
+                    }
+                )
+                .subscribe();
+        }
+    </script>
+</body>
+</html>

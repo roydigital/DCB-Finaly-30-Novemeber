@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Location Functionality</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1 class="text-2xl font-bold mb-6">Test Location Functionality</h1>
+    
+    <div class="test-section info">
+        <h2 class="text-xl font-bold mb-2">Test 1: Location Permission Request</h2>
+        <p>This tests the location permission request that appears when a customer opens the website.</p>
+        <button onclick="testLocationPermission()" class="btn-primary">Test Location Permission</button>
+        <div id="test1-result" class="mt-2"></div>
+    </div>
+    
+    <div class="test-section info">
+        <h2 class="text-xl font-bold mb-2">Test 2: Location Capture for Walk-in Orders</h2>
+        <p>This tests the location capture functionality for walk-in orders in the POS system.</p>
+        <button onclick="testLocationCapture()" class="btn-primary">Test Location Capture</button>
+        <div id="test2-result" class="mt-2"></div>
+    </div>
+    
+    <div class="test-section info">
+        <h2 class="text-xl font-bold mb-2">Test 3: Check Admin Display</h2>
+        <p>This tests if the admin page correctly displays location links for orders with coordinates.</p>
+        <button onclick="testAdminDisplay()" class="btn-primary">Test Admin Display</button>
+        <div id="test3-result" class="mt-2"></div>
+    </div>
+    
+    <div class="test-section info">
+        <h2 class="text-xl font-bold mb-2">Test 4: Cookie Storage Check</h2>
+        <p>This tests if the location permission is stored in cookies and only asked once per browser session.</p>
+        <button onclick="testCookieStorage()" class="btn-primary">Test Cookie Storage</button>
+        <div id="test4-result" class="mt-2"></div>
+    </div>
+
+    <script>
+        // Test 1: Location Permission Request
+        async function testLocationPermission() {
+            const resultDiv = document.getElementById('test1-result');
+            resultDiv.innerHTML = '<p>Testing location permission request...</p>';
+            
+            try {
+                // Check if geolocation is supported
+                if (!navigator.geolocation) {
+                    resultDiv.innerHTML = '<p class="error">Geolocation is not supported by this browser.</p>';
+                    return;
+                }
+                
+                // Check if permission has already been granted
+                const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
+                
+                if (permissionStatus.state === 'granted') {
+                    resultDiv.innerHTML = '<p class="success">✓ Location permission already granted.</p>';
+                } else if (permissionStatus.state === 'prompt') {
+                    resultDiv.innerHTML = '<p class="info">Location permission will be requested when needed.</p>';
+                } else {
+                    resultDiv.innerHTML = '<p class="error">Location permission denied. User needs to enable it in browser settings.</p>';
+                }
+                
+                // Test getting current position
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    });
+                });
+                
+                if (position) {
+                    resultDiv.innerHTML += `<p class="success">✓ Location captured successfully!</p>
+                                           <p>Latitude: ${position.coords.latitude}</p>
+                                           <p>Longitude: ${position.coords.longitude}</p>
+                                           <p>Accuracy: ${position.coords.accuracy} meters</p>`;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Test 2: Location Capture for Walk-in Orders
+        async function testLocationCapture() {
+            const resultDiv = document.getElementById('test2-result');
+            resultDiv.innerHTML = '<p>Testing location capture for walk-in orders...</p>';
+            
+            try {
+                // Simulate the getCurrentPosition function from pos.html
+                function getCurrentPosition() {
+                    return new Promise((resolve, reject) => {
+                        if (!navigator.geolocation) {
+                            reject(new Error("Geolocation is not supported by your browser"));
+                            return;
+                        }
+                        
+                        navigator.geolocation.getCurrentPosition(
+                            resolve,
+                            reject,
+                            {
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                maximumAge: 0
+                            }
+                        );
+                    });
+                }
+                
+                const position = await getCurrentPosition();
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                
+                // Test the Google Maps and OpenStreetMap URLs
+                const googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                const openStreetMapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=16`;
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✓ Location capture test passed!</p>
+                    <p>Latitude: ${latitude.toFixed(6)}</p>
+                    <p>Longitude: ${longitude.toFixed(6)}</p>
+                    <p>Google Maps URL: <a href="${googleMapsUrl}" target="_blank">${googleMapsUrl}</a></p>
+                    <p>OpenStreetMap URL: <a href="${openStreetMapUrl}" target="_blank">${openStreetMapUrl}</a></p>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>
+                                      <p class="info">Note: This is expected if location permission is denied. Walk-in orders will proceed without location data.</p>`;
+            }
+        }
+        
+        // Test 3: Check Admin Display
+        function testAdminDisplay() {
+            const resultDiv = document.getElementById('test3-result');
+            resultDiv.innerHTML = '<p>Testing admin display functionality...</p>';
+            
+            // Test the createCardHTML function logic
+            const testOrder = {
+                id: 'test-order-123',
+                created_at: new Date().toISOString(),
+                customers: {
+                    name: 'Test Customer',
+                    phone: '9876543210'
+                },
+                items: [
+                    { name: 'Chicken Tikka', qty: 2, variant: '4 pcs' }
+                ],
+                total_amount: 399,
+                payment_method: 'cash',
+                status: 'pending',
+                latitude: 28.6139,
+                longitude: 77.2090
+            };
+            
+            // Test the location link generation logic
+            const latitude = testOrder.latitude;
+            const longitude = testOrder.longitude;
+            const googleMapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+            const openStreetMapUrl = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}&zoom=16`;
+            
+            const locationLink = `
+                <div class="mt-2 pt-2 border-t border-gray-100">
+                    <div class="flex items-center gap-2 text-xs">
+                        <i class="fa-solid fa-map-marker-alt text-brand-red"></i>
+                        <span class="font-medium text-gray-600">Walk-in Location:</span>
+                        <a href="${googleMapsUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline font-medium" title="Open in Google Maps">
+                            Google Maps
+                        </a>
+                        <span class="text-gray-400">|</span>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cart Calculations</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .pass { background-color: #d4edda; border-color: #c3e6cb; }
+        .fail { background-color: #f8d7da; border-color: #f5c6cb; }
+        .result { font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test Cart Calculations</h1>
+    <p>Testing GST (5%) and delivery fee (₹55 if subtotal < 499) logic</p>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        // Test cases
+        const testCases = [
+            { subtotal: 0, expectedGST: 0, expectedDelivery: 0, expectedTotal: 0, description: "Empty cart" },
+            { subtotal: 100, expectedGST: 5, expectedDelivery: 55, expectedTotal: 160, description: "Subtotal ₹100 (< 499)" },
+            { subtotal: 300, expectedGST: 15, expectedDelivery: 55, expectedTotal: 370, description: "Subtotal ₹300 (< 499)" },
+            { subtotal: 498, expectedGST: 25, expectedDelivery: 55, expectedTotal: 578, description: "Subtotal ₹498 (< 499)" },
+            { subtotal: 499, expectedGST: 25, expectedDelivery: 0, expectedTotal: 524, description: "Subtotal ₹499 (>= 499)" },
+            { subtotal: 500, expectedGST: 25, expectedDelivery: 0, expectedTotal: 525, description: "Subtotal ₹500 (>= 499)" },
+            { subtotal: 1000, expectedGST: 50, expectedDelivery: 0, expectedTotal: 1050, description: "Subtotal ₹1000 (>= 499)" },
+            { subtotal: 1500, expectedGST: 75, expectedDelivery: 0, expectedTotal: 1575, description: "Subtotal ₹1500 (>= 499)" }
+        ];
+        
+        function calculateCart(subtotal) {
+            const gst = Math.round(subtotal * 0.05); // 5% GST
+            const deliveryFee = subtotal < 499 ? 55 : 0; // ₹55 delivery if subtotal < 499
+            const total = subtotal + gst + deliveryFee;
+            return { gst, deliveryFee, total };
+        }
+        
+        function runTests() {
+            const container = document.getElementById('test-results');
+            let allPassed = true;
+            
+            testCases.forEach((testCase, index) => {
+                const result = calculateCart(testCase.subtotal);
+                const passed = 
+                    result.gst === testCase.expectedGST &&
+                    result.deliveryFee === testCase.expectedDelivery &&
+                    result.total === testCase.expectedTotal;
+                
+                allPassed = allPassed && passed;
+                
+                const testDiv = document.createElement('div');
+                testDiv.className = `test ${passed ? 'pass' : 'fail'}`;
+                testDiv.innerHTML = `
+                    <h3>Test ${index + 1}: ${testCase.description}</h3>
+                    <p>Subtotal: ₹${testCase.subtotal}</p>
+                    <p>Expected: GST=₹${testCase.expectedGST}, Delivery=₹${testCase.expectedDelivery}, Total=₹${testCase.expectedTotal}</p>
+                    <p>Actual: GST=₹${result.gst}, Delivery=₹${result.deliveryFee}, Total=₹${result.total}</p>
+                    <div class="result">${passed ? '✓ PASS' : '✗ FAIL'}</div>
+                `;
+                
+                container.appendChild(testDiv);
+            });
+            
+            const summary = document.createElement('div');
+            summary.className = `test ${allPassed ? 'pass' : 'fail'}`;
+            summary.innerHTML = `<h2>${allPassed ? 'All tests passed!' : 'Some tests failed!'}</h2>`;
+            container.appendChild(summary);
+        }
+        
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', runTests);
+    </script>
+</body>
+</html>

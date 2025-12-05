@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Menu & Recipe Manager</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gray: '#f3f4f6',
+                            blue: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Manager Console</span>
+            </div>
+        </div>
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders</a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg"><i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager</a>
+            <a href="inventory.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-boxes-stacked w-5 text-center"></i> Inventory</a>
+            <a href="customers.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-users w-5 text-center"></i> Customers</a>
+            <a href="history.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"><i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> History</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                <span class="font-display font-bold text-xl">MENU</span>
+            </div>
+            <div class="hidden md:flex flex-col">
+                <h2 class="text-xl font-bold font-display text-brand-dark">MENU & RECIPES</h2>
+                <span class="text-xs text-gray-500">Link dishes to inventory for auto-deduction</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="relative">
+                    <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="searchInput" onkeyup="filterItems()" placeholder="Search items..." class="pl-10 pr-4 py-2 border rounded-full text-sm focus:outline-none focus:border-brand-red w-48 md:w-64 transition">
+                </div>
+                <button onclick="openModal()" class="bg-brand-red hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2 transition transform hover:scale-105">
+                    <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Add Item</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 bg-brand-gray">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-500 text-xs uppercase border-b border-gray-200">
+                            <th class="p-4 font-semibold">Item Details</th>
+                            <th class="p-4 font-semibold">Category</th>
+                            <th class="p-4 font-semibold">Prices</th>
+                            <th class="p-4 font-semibold text-center">Recipe Status</th>
+                            <th class="p-4 font-semibold text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="menu-table-body" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="itemDrawer" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" onclick="closeModal()"></div>
+        <div class="absolute inset-y-0 right-0 max-w-lg w-full bg-white shadow-2xl transform transition-transform translate-x-full flex flex-col" id="drawerPanel">
+            
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold font-display text-gray-800" id="drawerTitle">New Item</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <input type="hidden" id="edit-id">
+
+                <div class="flex border-b border-gray-200 mb-4">
+                    <button onclick="switchTab('basic')" id="tab-basic" class="flex-1 pb-2 border-b-2 border-brand-red font-bold text-brand-red">Basic Info</button>
+                    <button onclick="switchTab('recipe')" id="tab-recipe" class="flex-1 pb-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700">Recipe / Stock</button>
+                </div>
+
+                <div id="content-basic" class="space-y-4">
+                    <div class="space-y-2">
+                        <label class="block text-sm font-medium text-gray-700">Image URL</label>
+                        <input type="text" id="inp-image" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none text-sm" placeholder="Paste image link here">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Item Name</label>
+                            <input type="text" id="inp-name" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Category</label>
+                            <input type="text" id="inp-category" list="category-list" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none">
+                            <datalist id="category-list"></datalist>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Stock Status</label>
+                            <select id="inp-stock" class="w-full p-2 border rounded focus:border-brand-red focus:outline-none bg-white">
+                                <option value="true">In Stock</option>
+                                <option value="false">Out of Stock</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2 flex justify-between">
+                            <span>Selling Prices</span>
+                            <button onclick="addVariantRow()" class="text-xs text-brand-red font-bold">+ Add Size</button>
+                        </label>
+                        <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2" id="pricing-container"></div>
+                    </div>
+                </div>
+
+                <div id="content-recipe" class="space-y-4 hidden">
+                    <div class="bg-blue-50 border border-blue-200 p-3 rounded text-xs text-blue-800">
+                        <i class="fa-solid fa-circle-info mr-1"></i> Add ingredients used to make <strong>1 Unit</strong> of this item. Stock will be deducted automatically when sold.
+                    </div>
+
+                    <div class="flex gap-2 items-end">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Ingredient</label>
+                            <select id="recipe-ingredient-select" class="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:border-brand-red">
+                                <option value="">Select Inventory Item...</option>
+                                </select>
+                        </div>
+                        <div class="w-24">
+                            <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Qty Needed</label>
+                            <input type="number" id="recipe-qty-input" placeholder="0.0" class="w-full p-2 border rounded text-sm focus:outline-none focus:border-brand-red">
+                        </div>
+                        <button onclick="addRecipeItem()" class="bg-brand-dark text-white p-2 rounded w-10 h-[38px] flex items-center justify-center hover:bg-gray-800">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Current Recipe</label>
+                        <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-gray-100 text-xs uppercase text-gray-500">
+                                    <tr><th class="p-2">Ingredient</th><th class="p-2">Qty</th><th class="p-2 text-center">Action</th></tr>
+                                </thead>
+                                <tbody id="recipe-list-body" class="divide-y divide-gray-100">
+                                    <tr><td colspan="3" class="p-4 text-center text-gray-400 italic text-xs">No ingredients linked yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="p-6 border-t border-gray-200 bg-gray-50">
+                <button onclick="saveItem()" id="btn-save" class="w-full bg-brand-red text-white py-3 rounded-lg font-bold hover:bg-red-700 transition shadow-lg">SAVE ITEM</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let menuItems = [];
+        let inventoryItems = [];
+        let currentRecipe = {}; // { "inventory_id": qty }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMenu();
+            fetchInventory();
+        });
+
+        async function fetchMenu() {
+            const { data, error } = await supabase.from('menu_items').select('*').order('category');
+            if (!error) {
+                menuItems = data;
+                renderMenu(data);
+                updateCategoryDatalist(data);
+            }
+        }
+
+        async function fetchInventory() {
+            const { data, error } = await supabase.from('inventory').select('id, name, unit').order('name');
+            if (!error) {
+                inventoryItems = data;
+                populateIngredientDropdown();
+            }
+        }
+
+        function populateIngredientDropdown() {
+            const select = document.getElementById('recipe-ingredient-select');
+            select.innerHTML = '<option value="">Select Inventory Item...</option>' + 
+                inventoryItems.map(i => `<option value="${i.id}" data-unit="${i.unit}">${i.name} (${i.unit})</option>`).join('');
+        }
+
+        function renderMenu(items) {
+            const tbody = document.getElementById('menu-table-body');
+            tbody.innerHTML = items.map(item => {
+                const hasRecipe = item.recipe && Object.keys(item.recipe).length > 0;
+                const prices = Object.entries(item.prices || {}).map(([k, v]) => `<span class="bg-gray-100 text-xs px-2 py-1 rounded border mr-1">${k}: ₹${v}</span>`).join('');
+                
+                return `
+                <tr class="hover:bg-gray-50 border-b border-gray-100 group">
+                    <td class="p-4 flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-200 rounded overflow-hidden"><img src="${item.image_url || 'https://placehold.co/100'}" class="w-full h-full object-cover"></div>
+                        <div class="font-bold text-gray-800">${item.name}</div>
+                    </td>
+                    <td class="p-4"><span class="px-2 py-1 bg-brand-cream text-xs font-bold rounded uppercase">${item.category}</span></td>
+                    <td class="p-4">${prices}</td>
+                    <td class="p-4 text-center">
+                        ${hasRecipe ? '<span class="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200"><i class="fa-solid fa-link"></i> Linked</span>' : '<span class="text-xs font-bold text-gray-400">No Recipe</span>'}
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="editItem('${item.id}')" class="text-brand-blue font-bold text-sm hover:underline">Edit</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // --- TAB LOGIC ---
+        function switchTab(tab) {
+            document.getElementById('content-basic').classList.toggle('hidden', tab !== 'basic');
+            document.getElementById('content-recipe').classList.toggle('hidden', tab !== 'recipe');
+            
+            const btnBasic = document.getElementById('tab-basic');
+            const btnRecipe = document.getElementById('tab-recipe');
+
+            if(tab === 'basic') {
+                btnBasic.className = "flex-1 pb-2 border-b-2 border-brand-red font-bold text-brand-red";
+                btnRecipe.className = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+            } else {
+                btnBasic.className = "flex-1 pb-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700";
+                btnRecipe.className = "flex-1 pb-2 border-b-2 border-brand-red font-bold text-brand-red";
+            }
+        }
+
+        // --- RECIPE BUILDER LOGIC ---
+        function addRecipeItem() {
+            const select = document.getElementById('recipe-ingredient-select');
+            const qtyInput = document.getElementById('recipe-qty-input');
+            const invId = select.value;
+            const qty = parseFloat(qtyInput.value);
+
+            if(!invId || !qty || qty <= 0) return alert("Select an ingredient and valid quantity");
+
+            currentRecipe[invId] = qty; // Add or Update
+            renderRecipeList();
+            
+            // Reset inputs
+            select.value = "";
+            qtyInput.value = "";
+        }
+
+        function removeRecipeItem(invId) {
+            delete currentRecipe[invId];
+            renderRecipeList();
+        }
+
+        function renderRecipeList() {
+            const tbody = document.getElementById('recipe-list-body');
+            const entries = Object.entries(currentRecipe);
+
+            if(entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400 italic text-xs">No ingredients linked yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = entries.map(([id, qty]) => {
+                const invItem = inventoryItems.find(i => i.id === id);
+                const name = invItem ? invItem.name : 'Unknown Item';
+                const unit = invItem ? invItem.unit : '';
+                return `
+                    <tr class="border-b border-gray-100">
+                        <td class="p-2 font-medium text-gray-700">${name}</td>
+                        <td class="p-2 text-gray-600 font-mono">${qty} ${unit}</td>
+                        <td class="p-2 text-center">

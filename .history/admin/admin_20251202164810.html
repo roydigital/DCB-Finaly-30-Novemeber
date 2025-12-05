@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB Admin | Kitchen Display System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- FontAwesome & Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323',
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            green: '#16a34a',
+                            yellow: '#ca8a04'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar for columns */
+        .scroller::-webkit-scrollbar { width: 6px; height: 6px; }
+        .scroller::-webkit-scrollbar-track { background: #e5e7eb; }
+        .scroller::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .scroller::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Status colors for cards */
+        .status-border-Pending { border-left: 5px solid #D92323; }
+        .status-border-Preparing { border-left: 5px solid #ca8a04; }
+        .status-border-Ready { border-left: 5px solid #16a34a; }
+        .status-border-Completed { border-left: 5px solid #1a1a1a; }
+
+        /* Flash overlay to signal new orders */
+        .new-order-flash {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(circle at center, rgba(217, 35, 35, 0.2), rgba(217, 35, 35, 0.08) 45%, transparent 70%);
+            opacity: 0;
+            z-index: 60;
+        }
+        .new-order-flash.active {
+            animation: newOrderPulse 1.2s ease-out 0s 2;
+        }
+        .new-order-flash.hidden { display: none; }
+        @keyframes newOrderPulse {
+            0% { opacity: 0; }
+            10% { opacity: 0.85; }
+            45% { opacity: 0.3; }
+            100% { opacity: 0; }
+        }
+
+        /* Blinking effect for new orders */
+        @keyframes blinkRed {
+            0% { box-shadow: 0 0 0 0 rgba(217, 35, 35, 0.4); border-color: #D92323; }
+            50% { box-shadow: 0 0 0 6px rgba(217, 35, 35, 0.1); border-color: #ff6b6b; }
+            100% { box-shadow: 0 0 0 0 rgba(217, 35, 35, 0.4); border-color: #D92323; }
+        }
+        .animate-blink {
+            animation: blinkRed 1.5s infinite;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-body h-screen flex overflow-hidden">
+    <div id="new-order-flash" class="new-order-flash hidden"></div>
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-dark text-white flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="h-16 flex items-center gap-3 px-6 bg-black/20 border-b border-gray-800">
+            <div class="w-8 h-8 bg-brand-red rounded-full flex items-center justify-center font-display font-bold">D</div>
+            <div>
+                <h1 class="font-display font-bold tracking-wide text-lg leading-none">DCB ADMIN</h1>
+                <span class="text-[10px] text-gray-400 uppercase tracking-wider">Delhi Chicken Brothers</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 py-6 space-y-2 px-3">
+            <a href="admin.html" class="flex items-center gap-3 px-4 py-3 bg-brand-red rounded-lg text-white font-medium transition shadow-lg shadow-red-900/20">
+                <i class="fa-solid fa-table-columns w-5 text-center"></i> Live Orders
+            </a>
+            <a href="menu.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-utensils w-5 text-center"></i> Menu Manager
+            </a>
+            <a href="history.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-clock-rotate-left w-5 text-center"></i> Order History
+            </a>
+            <a href="customers.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-chart-line w-5 text-center"></i> Analytics
+            </a>
+            <a href="pos.html" class="flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition">
+                <i class="fa-solid fa-cash-register w-5 text-center"></i> POS System
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800">
+            <div class="bg-gray-800 rounded p-3 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center">
+                    <i class="fa-solid fa-wifi text-xs"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-gray-400">System Status</div>
+                    <div class="text-xs font-bold text-green-400">Online & Live</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full relative">
+        
+        <!-- Mobile Header -->
+        <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 md:px-8 z-10">
+            <div class="flex items-center gap-3 md:hidden">
+                <div class="w-8 h-8 bg-brand-red rounded text-white flex items-center justify-center font-bold">D</div>
+                <span class="font-display font-bold text-xl">DCB KITCHEN</span>
+            </div>
+            
+            <div class="hidden md:flex items-center gap-2">
+                <h2 class="text-xl font-bold font-display text-brand-dark">KITCHEN DISPLAY SYSTEM</h2>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div id="connection-indicator" class="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold border border-green-200">
+                    <span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span> LIVE
+                </div>
+                <button onclick="fetchOrders()" class="p-2 text-gray-500 hover:text-brand-red transition" title="Refresh">
+                    <i class="fa-solid fa-rotate-right text-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Bar -->
+        <div class="bg-white border-b border-gray-200 px-4 md:px-8 py-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Orders Today</span>
+                <span class="text-2xl font-display font-bold text-brand-dark" id="stat-count">0</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Revenue</span>
+                <span class="text-2xl font-display font-bold text-brand-red" id="stat-revenue">₹0</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Pending</span>
+                <span class="text-2xl font-display font-bold text-yellow-600" id="stat-pending">0</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-xs text-gray-500 uppercase tracking-wide font-semibold">Kitchen Time</span>
+                <span class="text-xl font-display font-bold text-gray-600" id="clock">--:--</span>
+            </div>
+        </div>
+
+        <!-- Kanban Board Area -->
+        <div class="flex-1 overflow-x-auto overflow-y-hidden p-4 md:p-6 bg-brand-cream/30">
+            <div class="flex gap-4 h-full min-w-[1000px] md:min-w-0">
+                
+                <!-- NEW ORDERS Column -->
+                <div class="flex-1 flex flex-col min-w-[300px] max-w-sm bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="bg-white p-3 border-b border-red-100 flex justify-between items-center sticky top-0">
+                        <h3 class="font-display font-bold text-gray-700 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-brand-red"></span> NEW ORDERS
+                        </h3>
+                        <span id="count-pending" class="bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-3 scroller" id="col-pending">
+                        <!-- Cards injected here -->
+                        <div class="text-center py-10 text-gray-400 text-sm italic">No new orders</div>
+                    </div>
+                </div>
+
+                <!-- PREPARING Column -->
+                <div class="flex-1 flex flex-col min-w-[300px] max-w-sm bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="bg-white p-3 border-b border-yellow-100 flex justify-between items-center sticky top-0">
+                        <h3 class="font-display font-bold text-gray-700 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-brand-yellow"></span> PREPARING
+                        </h3>
+                        <span id="count-preparing" class="bg-yellow-100 text-yellow-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-3 scroller" id="col-preparing">
+                        <!-- Cards injected here -->
+                    </div>
+                </div>
+
+                <!-- READY Column -->
+                <div class="flex-1 flex flex-col min-w-[300px] max-w-sm bg-gray-50 rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="bg-white p-3 border-b border-green-100 flex justify-between items-center sticky top-0">
+                        <h3 class="font-display font-bold text-gray-700 flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-brand-green"></span> READY FOR PICKUP
+                        </h3>
+                        <span id="count-ready" class="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-3 scroller" id="col-ready">
+                        <!-- Cards injected here -->
+                    </div>
+                </div>
+
+                <!-- COMPLETED/HISTORY Column -->
+                <div class="flex-1 flex flex-col min-w-[300px] max-w-sm bg-gray-100 rounded-xl border border-gray-200 shadow-sm overflow-hidden opacity-80">
+                    <div class="bg-gray-200 p-3 border-b border-gray-300 flex justify-between items-center sticky top-0">
+                        <h3 class="font-display font-bold text-gray-600 flex items-center gap-2">
+                            <i class="fa-solid fa-check-double text-gray-500"></i> COMPLETED
+                        </h3>
+                        <span id="count-completed" class="bg-gray-300 text-gray-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                    </div>
+                    <div class="flex-1 overflow-y-auto p-3 space-y-3 scroller" id="col-completed">
+                        <!-- Cards injected here -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        // --- CONFIG ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- STATE ---
+        let orders = [];
+        let hasLoadedOnce = false;
+        let realtimeReady = false;
+        let pollIntervalId = null;
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchOrders();
+            setupRealtime();
+            startPollingFallback();
+            setInterval(updateClock, 1000);
+            updateClock();
+        });
+
+        function setupRealtime() {
+            console.log('Setting up realtime subscription...');
+            const channel = supabase
+                .channel('public:orders')
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'orders' },
+                    (payload) => {
+                        console.log('Realtime update received:', payload);
+                        
+                        // CONFIRMED: Realtime is actually delivering data.
+                        // Only NOW do we consider realtime "Ready" and potentially stop aggressive polling.
+                        realtimeReady = true;
+                        
+                        fetchOrders(); // Refresh board on any change
+                        
+                        if (payload.eventType === 'INSERT') {
+                            triggerNewOrderNotice();
+                            playNotificationSound();
+                        }
+                    }
+                )
+                .subscribe((status) => {
+                    console.log('Realtime Connection Status:', status);
+                    if (status === 'SUBSCRIBED') {
+                        // NOTE: We do NOT set realtimeReady = true here.
+                        // Connecting is not enough; we need to verify we receive events.
+                        // This ensures polling continues if the table isn't in the publication.
+                        console.log('Realtime connected - waiting for first event to confirm data flow');
+                        document.getElementById('connection-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span> LIVE (Listening)';
+                    } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        console.warn('Realtime connection issue:', status);
+                        realtimeReady = false; // Force fallback to polling
+                        document.getElementById('connection-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> Reconnecting...';
+                        startPollingFallback();
+                    }
+                });
+        }
+
+        function startPollingFallback() {
+            // Poll every 5 seconds until realtime proves healthy by delivering an event
+            if (pollIntervalId) return;
+            
+            console.log('Starting polling fallback...');
+            pollIntervalId = setInterval(() => {
+                if (realtimeReady) {
+                    console.log('Realtime confirmed healthy (events received). Stopping fallback polling.');
+                    clearInterval(pollIntervalId);
+                    pollIntervalId = null;
+                } else {
+                    console.log('Polling check (Realtime not yet confirmed)...');
+                    fetchOrders();
+                }
+            }, 5000);
+        }
+
+        function playNotificationSound() {
+            try {
+                // Simple beep for KDS
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                // "Ping" sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(660, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+                
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            } catch (e) {
+                console.log('Audio play failed', e);
+            }
+        }
+
+        function triggerNewOrderNotice() {
+            const flash = document.getElementById('new-order-flash');
+            if (!flash) return;
+
+            flash.classList.remove('hidden');
+            flash.classList.add('active');
+
+            // Remove the flash after the animation completes so it can be re-triggered
+            setTimeout(() => {
+                flash.classList.remove('active');
+                flash.classList.add('hidden');
+            }, 2400);
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        // --- CORE FUNCTIONS ---
+
+        async function fetchOrders() {
+            // Fetch orders with customer information and items from JSONB
+            try {
+                // Fetch all customer fields to handle potential schema inconsistencies (name vs first_name)
+                const { data, error } = await supabase
+                    .from('orders')
+                    .select('*, customers(*)')
+                    .order('created_at', { ascending: false })
+                    .limit(100); // Get last 100 orders to ensure we see all recent ones
+
+                if (error) throw error;
+
+                const previousIds = new Set(orders.map(o => o.id));
+                orders = data || [];
+
+                const newOrders = orders.filter(o => !previousIds.has(o.id));
+                if (hasLoadedOnce && newOrders.length) {
+                    triggerNewOrderNotice();
+                    playNotificationSound();
+                }
+                hasLoadedOnce = true;
+
+                renderBoard();
+                calculateStats();
+                
+                // Show online status
+                document.getElementById('connection-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span> LIVE';
+                document.getElementById('connection-indicator').classList.remove('bg-red-100', 'text-red-700');
+                document.getElementById('connection-indicator').classList.add('bg-green-100', 'text-green-700');
+
+            } catch (err) {
+                console.error("Error fetching orders:", err);
+                document.getElementById('connection-indicator').innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> ERROR';
+                document.getElementById('connection-indicator').classList.remove('bg-green-100', 'text-green-700');
+                document.getElementById('connection-indicator').classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        async function updateOrderStatus(orderId, newStatus) {
+            // Optimistic UI update could go here, but for safety we'll wait for DB
+            const btn = document.getElementById(`btn-${orderId}`);
+            if(btn) btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+
+            try {
+                const { error } = await supabase
+                    .from('orders')
+                    .update({ status: newStatus.toLowerCase() })
+                    .eq('id', orderId);
+
+                if (error) throw error;
+
+                // Refresh data to move card
+                fetchOrders();
+
+            } catch (err) {
+                console.error("Update failed:", err);
+                alert("Failed to update status");
+                fetchOrders(); // Reset UI
+            }
+        }
+
+        // --- RENDERING ---
+
+        function renderBoard() {
+            // Clear Columns
+            const cols = {
+                'Pending': document.getElementById('col-pending'),
+                'Preparing': document.getElementById('col-preparing'),
+                'Ready': document.getElementById('col-ready'),
+                'Completed': document.getElementById('col-completed')
+            };
+
+            // Reset HTML
+            Object.values(cols).forEach(col => col.innerHTML = '');
+
+            // Counters
+            const counts = { 'Pending': 0, 'Preparing': 0, 'Ready': 0, 'Completed': 0 };
+
+            orders.forEach(order => {
+                // Normalize status case - handle both 'pending' and 'Pending'
+                let status = order.status || 'pending';
+                // Convert to lowercase for consistent comparison
+                const statusLower = status.toLowerCase();
+                
+                // Map status to column
+                let targetCol = 'Pending'; // Default
+                
+                if (statusLower === 'preparing') {
+                    targetCol = 'Preparing';
+                } else if (statusLower === 'ready') {
+                    targetCol = 'Ready';
+                } else if (statusLower === 'completed' || statusLower === 'delivered' || statusLower === 'cancelled') {
+                    targetCol = 'Completed';
+                } else {
+                    targetCol = 'Pending'; // 'pending' or any other status goes to Pending
+                }
+                
+                // Capitalize first letter for display
+                const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
+                
+                if (cols[targetCol]) {
+                    cols[targetCol].innerHTML += createCardHTML(order, displayStatus);
+                    counts[targetCol]++;
+                }
+            });
+
+            // Update badges
+            document.getElementById('count-pending').innerText = counts['Pending'];
+            document.getElementById('count-preparing').innerText = counts['Preparing'];
+            document.getElementById('count-ready').innerText = counts['Ready'];
+            document.getElementById('count-completed').innerText = counts['Completed'];
+
+            // Show empty state messages if no orders
+            if (counts['Pending'] === 0) {
+                document.getElementById('col-pending').innerHTML = '<div class="text-center py-10 text-gray-400 text-sm italic">No new orders</div>';
+            }
+            if (counts['Preparing'] === 0) {
+                document.getElementById('col-preparing').innerHTML = '<div class="text-center py-10 text-gray-400 text-sm italic">No orders in preparation</div>';
+            }
+            if (counts['Ready'] === 0) {
+                document.getElementById('col-ready').innerHTML = '<div class="text-center py-10 text-gray-400 text-sm italic">No orders ready for pickup</div>';
+            }
+            if (counts['Completed'] === 0) {
+                document.getElementById('col-completed').innerHTML = '<div class="text-center py-10 text-gray-400 text-sm italic">No completed orders</div>';
+            }
+        }
+
+        function createCardHTML(order, status) {
+            const timeAgo = getTimeDifference(new Date(order.created_at));
+            
+            // Get customer name from customers relation or fallback to note parsing
+            let customerName = "Guest";
+            let customerPhone = "";
+            let customerAddress = "";
+            
+            if (order.customers) {
+                // Check for various name fields that might exist
+                customerName = order.customers.name || order.customers.first_name || "Guest";
+                customerPhone = order.customers.mobile_number || order.customers.phone || "";
+                
+                // Build address from available fields
+                const addressParts = [];
+                if (order.customers.building_no) addressParts.push(order.customers.building_no);
+                if (order.customers.area) addressParts.push(order.customers.area);
+                if (order.customers.landmark) addressParts.push(order.customers.landmark);
+                if (order.customers.city) addressParts.push(order.customers.city);
+                if (order.customers.pin_code) addressParts.push(order.customers.pin_code);
+                
+                customerAddress = addressParts.join(', ');
+            } else if (order.note && order.note.includes("Name:")) {
+                const parts = order.note.split(',');
+                customerName = parts[0].replace("Name:", "").trim();
+                // Try to extract phone from note if available
+                const phoneMatch = order.note.match(/Phone:\s*([^,]+)/);
+                if (phoneMatch) customerPhone = phoneMatch[1].trim();
+            }
+
+            // Items HTML - items are now stored as JSONB in the items column
+            let itemsHtml = '';
+            if (order.items && Array.isArray(order.items)) {
+                itemsHtml = order.items.map(item => `
+                    <div class="flex justify-between items-start text-sm py-1 border-b border-gray-100 last:border-0">
+                        <div>
+                            <span class="font-bold text-gray-800">${item.qty || item.quantity || 1}x</span> 
+                            <span class="text-gray-700">${item.name || item.item_name || 'Item'}</span>
+                            <div class="text-xs text-gray-500 pl-4">${item.variant || ''}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                itemsHtml = '<div class="text-xs text-gray-500 italic">No items details available</div>';
+            }
+
+            // Action Buttons Logic
+            let actionButtons = '';
+            if (status === 'Pending') {
+                actionButtons = `
+                    <button onclick="updateOrderStatus('${order.id}', 'Preparing')" id="btn-${order.id}" class="flex-1 bg-brand-yellow hover:bg-yellow-600 text-white py-2 rounded font-bold text-sm transition">
+                        ACCEPT <i class="fa-solid fa-fire-burner ml-1"></i>
+                    </button>
+                `;
+            } else if (status === 'Preparing') {
+                actionButtons = `
+                    <button onclick="updateOrderStatus('${order.id}', 'Ready')" id="btn-${order.id}" class="flex-1 bg-brand-green hover:bg-green-700 text-white py-2 rounded font-bold text-sm transition">
+                        MARK READY <i class="fa-solid fa-bell-concierge ml-1"></i>
+                    </button>
+                `;
+            } else if (status === 'Ready') {
+                actionButtons = `
+                    <button onclick="updateOrderStatus('${order.id}', 'Completed')" id="btn-${order.id}" class="flex-1 bg-gray-800 hover:bg-black text-white py-2 rounded font-bold text-sm transition">
+                        COMPLETE <i class="fa-solid fa-check ml-1"></i>
+                    </button>
+                `;
+            }
+
+            // Location link if coordinates are available (for walk-in orders)
+            let locationLink = '';
+            if (order.latitude && order.longitude) {
+                const googleMapsUrl = `https://www.google.com/maps?q=${order.latitude},${order.longitude}`;
+                const openStreetMapUrl = `https://www.openstreetmap.org/?mlat=${order.latitude}&mlon=${order.longitude}&zoom=16`;
+                
+                locationLink = `
+                    <div class="mt-2 pt-2 border-t border-gray-100">
+                        <div class="flex items-center gap-2 text-xs">
+                            <i class="fa-solid fa-map-marker-alt text-brand-red"></i>
+                            <span class="font-medium text-gray-600">Walk-in Location:</span>
+                            <a href="${googleMapsUrl}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline font-medium" title="Open in Google Maps">
+                                Google Maps
+                            </a>
+                            <span class="text-gray-400">|</span>
+                            <a href="${openStreetMapUrl}" target="_blank" class="text-green-600 hover:text-green-800 hover:underline font-medium" title="Open in OpenStreetMap">
+                                OpenStreetMap
+                            </a>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Coordinates: ${order.latitude.toFixed(6)}, ${order.longitude.toFixed(6)}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Blinking effect for Pending orders
+            const blinkClass = status === 'Pending' ? 'animate-blink' : '';
+
+            return `
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4 status-border-${status} relative group hover:shadow-md transition ${blinkClass}">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <span class="font-mono text-xs text-gray-400">#${order.id.substring(0, 8)}</span>
+                            <h4 class="font-bold font-display text-lg text-brand-dark leading-none">${customerName}</h4>
+                            ${customerPhone ? `<div class="flex items-center gap-1 mt-1 text-sm text-gray-600"><i class="fa-solid fa-phone text-xs text-brand-red"></i> ${customerPhone}</div>` : ''}
+                    ${customerAddress ? `<div class="flex items-start gap-1 mt-1 text-xs text-gray-500"><i class="fa-solid fa-location-dot text-xs text-brand-red mt-0.5"></i> ${customerAddress}</div>` : ''}
+                    
+                    <!-- Location Link for Online Orders -->
+                    ${order.latitude && order.longitude ? `
+                        <div class="mt-2">
+                            <a href="https://www.google.com/maps?q=${order.latitude},${order.longitude}" target="_blank" 
+                    </div>
+
+                    ${order.note ? `<div class="bg-yellow-50 text-yellow-800 text-xs p-2 rounded mb-3 border border-yellow-100"><i class="fa-solid fa-note-sticky mr-1"></i> ${order.note}</div>` : ''}
+
+                    <div class="space-y-1 mb-4">
+                        ${itemsHtml}
+                    </div>
+
+                    ${locationLink}
+
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-100 mt-2">
+                        <div class="font-bold text-brand-red">₹${order.total_amount}</div>
+                        <div class="text-xs text-gray-400 uppercase font-bold">${order.payment_method || 'Cash'}</div>
+                    </div>
+
+                    ${status !== 'Completed' && status !== 'Delivered' && status !== 'Cancelled' ? 
+                        `<div class="mt-4 flex gap-2">
+                            ${actionButtons}
+                        </div>` 
+                    : ''}
+                </div>
+            `;
+        }
+
+        function calculateStats() {
+            // Simple logic for "Today" based on local time
+            const today = new Date().toDateString();
+            
+            const todaysOrders = orders.filter(o => new Date(o.created_at).toDateString() === today);
+            
+            const count = todaysOrders.length;
+            const revenue = todaysOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+            const pending = orders.filter(o => {
+                const status = (o.status || '').toLowerCase();
+                return status === 'pending';
+            }).length;
+
+            document.getElementById('stat-count').innerText = count;
+            document.getElementById('stat-revenue').innerText = '₹' + revenue.toLocaleString('en-IN');
+            document.getElementById('stat-pending').innerText = pending;
+        }
+
+        function getTimeDifference(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return '1d+ ago';
+        }
+
+        function switchView(viewName) {
+            // Placeholder for sidebar navigation logic if we added more pages
+            console.log("Switching to", viewName);
+        }
+
+    </script>
+</body>
+</html>

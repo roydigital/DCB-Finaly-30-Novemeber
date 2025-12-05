@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCB - Delhi Chicken Brothers | Online Ordering</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="asset/logo.png" type="image/png">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            red: '#D92323', // Matched from logo roughly
+                            dark: '#1a1a1a',
+                            cream: '#f4f1ea',
+                            gold: '#f59e0b'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Oswald', 'sans-serif'],
+                        body: ['Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D92323; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b91c1c; 
+        }
+        .animate-bounce-short {
+            animation: bounce-short 0.3s ease-in-out 2 alternate;
+        }
+        @keyframes bounce-short {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body class="bg-brand-cream text-gray-800 font-body antialiased">
+
+    <!-- Initialize Data Modal (Hidden by default) -->
+    <div id="seedModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl text-center">
+            <i class="fa-solid fa-database text-4xl text-brand-red mb-4"></i>
+            <h2 class="text-2xl font-bold font-display mb-2">Setup Database?</h2>
+            <p class="text-gray-600 mb-6">Your menu appears to be empty. Would you like to upload the standard menu items (Kebabs, Curries, Rolls) to your database now?</p>
+            <div class="flex gap-4 justify-center">
+                <button onclick="closeSeedModal()" class="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50">No, Empty is fine</button>
+                <button onclick="seedDatabase()" class="px-4 py-2 bg-brand-red text-white rounded hover:bg-red-700 font-bold shadow-lg">Yes, Upload Menu</button>
+            </div>
+            <p id="seedStatus" class="mt-4 text-sm font-semibold"></p>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-40 bg-white shadow-md border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo Area -->
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 flex items-center justify-center">
+                        <img src="asset/logo.png" alt="DCB Logo" class="h-full w-auto object-contain">
+                    </div>
+                    <div class="hidden md:block">
+                        <h1 class="text-xl font-bold font-display tracking-wide text-brand-dark leading-none">DELHI CHICKEN BROTHERS (DCB)</h1>
+                        <span class="text-xs text-brand-red font-medium tracking-widest uppercase">Authentic Taste Legacy</span>
+                    </div>
+                </div>
+
+                <!-- Desktop Nav -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <button onclick="scrollToMenu()" class="text-brand-dark hover:text-brand-red font-medium transition">Menu</button>
+                    <a href="admin/admin.html" class="text-brand-dark hover:text-brand-red font-medium transition">Admin</a>
+                </div>
+
+                <!-- Cart Icon -->
+                <div class="relative cursor-pointer" onclick="toggleCart()">
+                    <div class="p-2 hover:bg-gray-100 rounded-full transition">
+                        <i class="fa-solid fa-bag-shopping text-2xl text-brand-dark"></i>
+                    </div>
+                    <span id="cart-badge" class="absolute top-0 right-0 bg-brand-red text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full transform scale-0 transition-transform duration-200">0</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative bg-brand-dark text-white overflow-hidden">
+        <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-40"></div>
+        <div class="relative max-w-7xl mx-auto py-24 px-4 sm:px-6 lg:px-8 text-center sm:text-left">
+            <h1 class="text-4xl md:text-6xl font-display font-bold mb-4 tracking-tight">
+                THE REAL <span class="text-brand-red">TASTE OF DELHI</span>
+            </h1>
+            <p class="text-xl text-gray-300 mb-8 max-w-2xl">
+                Experience the authentic flavors of roasted kebabs, creamy curries, and crunchy rolls. Directly from the grill to your doorstep.
+            </p>
+            <button onclick="scrollToMenu()" class="bg-brand-red hover:bg-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:-translate-y-1">
+                ORDER NOW
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col md:flex-row gap-8 relative">
+        
+        <!-- Menu Section -->
+        <div class="flex-1">
+            <!-- Categories Filters -->
+            <div class="sticky top-20 z-30 bg-brand-cream py-4 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto">
+                <div class="flex space-x-2 md:flex-wrap" id="category-filters">
+                    <!-- Filters injected by JS -->
+                    <div class="animate-pulse flex space-x-2">
+                        <div class="h-10 w-24 bg-gray-300 rounded-full"></div>
+                        <div class="h-10 w-24 bg-gray-300 rounded-full"></div>
+                        <div class="h-10 w-24 bg-gray-300 rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menu Grid -->
+            <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mt-6">
+                <!-- Items injected by JS -->
+                <div class="text-center col-span-full py-10 text-gray-500">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i>
+                    <p>Loading delicious menu...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cart Sidebar (Desktop Sticky / Mobile Drawer) -->
+        <aside id="cart-sidebar" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-2xl transform translate-x-full transition-transform duration-300 z-50 md:relative md:transform-none md:w-80 md:block md:translate-x-0 md:shadow-none md:bg-transparent hidden">
+            <div class="h-full md:h-auto md:sticky md:top-24 bg-white md:rounded-xl md:shadow-lg overflow-hidden flex flex-col">
+                
+                <!-- Cart Header -->
+                <div class="bg-brand-dark p-4 flex justify-between items-center text-white">
+                    <h2 class="font-display text-xl font-bold"><i class="fa-solid fa-basket-shopping mr-2"></i> Your Order</h2>
+                    <button class="md:hidden text-gray-300 hover:text-white" onclick="toggleCart()" title="Close cart" aria-label="Close cart">
+                        <i class="fa-solid fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- Cart Items Area -->
+                <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60vh] min-h-[200px]">
+                    <div class="flex flex-col items-center justify-center h-48 text-gray-400">
+                        <i class="fa-solid fa-burger text-4xl mb-2 opacity-50"></i>
+                        <p>Your cart is empty</p>
+                        <p class="text-sm">Add some yummy food!</p>
+                    </div>
+                </div>
+
+                <!-- Cart Footer / Checkout -->
+                <div class="bg-gray-50 p-4 border-t border-gray-200">
+                    <div class="flex justify-between mb-2 text-sm">
+                        <span class="text-gray-600">Subtotal</span>
+                        <span class="font-bold" id="cart-subtotal">₹0</span>
+                    </div>
+                    <div class="flex justify-between mb-4 text-xl font-display font-bold text-brand-dark">
+                        <span>Total</span>
+                        <span id="cart-total">₹0</span>
+                    </div>
+
+                    <!-- Customer Details Section -->
+                    <div id="customer-section" class="space-y-3">
+                        <!-- Customer Status -->
+                        <div class="bg-gray-100 border border-gray-200 rounded p-2 flex items-center justify-between">
+                            <div class="text-xs text-gray-700">
+                                <i class="fa-solid fa-user mr-1"></i> 
+                                <span id="customer-status">NEW CUSTOMER</span>
+                            </div>
+                            <div id="customer-found-badge" class="text-green-500 hidden">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Phone Input -->
+                        <div class="relative">
+                            <i class="fa-solid fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="tel" id="cust-phone" onkeyup="checkCustomer()" placeholder="Mobile Number" 
+                                   class="w-full pl-9 pr-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm">
+                        </div>
+                        
+                        <!-- Name Input -->
+                        <input type="text" id="cust-name" placeholder="Your Name" 
+                               class="w-full px-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm">
+                        
+                        <!-- Address/Notes -->
+                        <textarea id="cust-note" placeholder="Complete Delivery Address" rows="2" 
+                                  class="w-full px-3 py-2 border rounded focus:outline-none focus:border-brand-red text-sm"></textarea>
+                        
+                        <!-- Checkout Button -->
+                        <button onclick="placeOrder()" id="checkout-btn" 
+                                class="w-full bg-brand-red text-white py-3 rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            PLACE ORDER
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Cart Toggle Button (Floating) -->
+        <div class="fixed bottom-4 right-4 z-40 md:hidden">
+            <button onclick="toggleCart()" class="bg-brand-dark text-white p-4 rounded-full shadow-xl flex items-center gap-2">
+                <div class="relative">
+                    <i class="fa-solid fa-bag-shopping text-xl"></i>
+                    <span id="mobile-cart-badge" class="absolute -top-2 -right-2 bg-brand-red text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">0</span>
+                </div>
+                <span class="font-bold" id="mobile-cart-total">₹0</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Portion Selection Modal -->
+    <div id="portionModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold font-display text-brand-dark mb-2">Select Portion</h2>
+                <p class="text-gray-500 text-sm" id="portion-item-name">Choose your preferred portion size</p>
+            </div>
+            
+            <div class="space-y-3 mb-6" id="portion-options">
+                <!-- Portion options will be injected here -->
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closePortionModal()" class="flex-1 px-4 py-3 border border-gray-300 text-gray-600 rounded-xl hover:bg-gray-50 font-medium transition">
+                    Cancel
+                </button>
+                <button onclick="addSelectedPortionToCart()" id="add-to-cart-btn" class="flex-1 px-4 py-3 bg-brand-red text-white rounded-xl hover:bg-red-700 font-bold transition">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="orderSuccessModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-8 max-w-sm w-full text-center">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-check text-green-600 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold font-display text-gray-800 mb-2">Order Placed!</h2>
+            <p class="text-gray-600 mb-6">Your order #<span id="success-order-id" class="font-mono font-bold"></span> has been received.</p>
+            <button onclick="location.reload()" class="w-full bg-brand-dark text-white py-2 rounded hover:bg-gray-800">Start New Order</button>
+        </div>
+    </div>
+
+
+    <!-- Footer -->
+    <footer class="bg-brand-dark text-white py-8 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <div class="font-display font-bold text-2xl mb-2">DCB</div>
+            <p class="text-gray-400 text-sm mb-4">An Authentic Taste Legacy from Delhi</p>
+            <p class="text-gray-600 text-xs">&copy; 2025 Delhi Chicken Brothers (DCB). All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Logic -->
+    <script>
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = 'https://kjbelegkbusvtvtcgwhq.supabase.co';
+        // Note: In a production environment, never expose service keys. 
+        // Using the Anon key provided for client-side operations.
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtqYmVsZWdrYnVzdnR2dGNnd2hxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1MjI5ODIsImV4cCI6MjA3NDA5ODk4Mn0.-K-rkuJnyDPL5YnkJ62-UG1_mG0BIILMUEZpSTNnq5M';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- STATE ---
+        let state = {
+            menu: [],
+            cart: [],
+            categories: [],
+            activeCategory: 'All',
+            isLoading: true,
+            selectedItem: null,
+            selectedPortion: null
+        };
+
+        // --- MENU DATA (For Seeding) ---
+        // Transcribed from the uploaded image
+        const SEED_DATA = [
+            // Roasted
+            { name: 'Juicy Chicken Kebab (Creamy)', category: 'ROASTED', description: 'Melt in mouth creamy kebab', prices: { 'Half (1 seekh)': 119, 'Full (2 seekh)': 199 } },
+            { name: 'Minced Mutton Kebab (Creamy)', category: 'ROASTED', description: 'Rich mutton mince kebab', prices: { 'Half (1 seekh)': 159, 'Full (2 seekh)': 239 } },
+            { name: 'Spicy Roasted Tangdi (Creamy)', category: 'ROASTED', description: 'Spicy roasted drumsticks', prices: { '2 pcs': 149, '4 pcs': 249 } },
+            { name: 'Spicy Chicken Tikka (Dry)', category: 'ROASTED', description: 'Classic spicy tikka', prices: { '4 pcs': 199, '8 pcs': 299 } },
+            { name: 'Chicken Malai Tikka (Creamy)', category: 'ROASTED', description: 'Mild creamy tikka', prices: { '4 pcs': 219, '8 pcs': 339 } },
+            { name: 'Slurpy Afghani Chicken (Creamy)', category: 'ROASTED', description: 'Rich afghani sauce', prices: { '4 pcs': 259, '8 pcs': 359 } },
+            { name: 'Chicken Salad Tikka (Creamy)', category: 'ROASTED', description: 'Healthy twist', prices: { '4 pcs': 239, '8 pcs': 299 } },
+            { name: 'Tandoori Chicken (Dry)', category: 'ROASTED', description: 'Traditional clay oven roast', prices: { '4 pcs': 239, '8 pcs': 329 } },
+            
+            // Fried
+            { name: 'Chicken Lollypop Spicy', category: 'FRIED', description: 'Spicy fried wings', prices: { '4 pcs': 239, '8 pcs': 349 } },
+            { name: 'Spicy Fried Chicken', category: 'FRIED', description: 'Crispy spicy chicken', prices: { '4 pcs': 229, '8 pcs': 349 } },
+            { name: 'Crispy Fried Tangdi', category: 'FRIED', description: 'Crunchy drumsticks', prices: { '2 pcs': 149, '4 pcs': 249 } },
+            { name: 'Chicken Makkhni (Creamy)', category: 'FRIED', description: 'Buttery fried delight', prices: { '4 pcs': 259, '8 pcs': 399 } },
+            { name: 'Crispy Fish Fry', category: 'FRIED', description: 'Golden fried fish', prices: { '2 pcs': 259, '4 pcs': 399 } },
+
+            // Rolls
+            { name: 'Chicken Tikka Roll', category: 'ROLLS', description: 'Wrapped in fresh bread', prices: { 'Standard': 139 } },
+            { name: 'Chicken Kebab Roll', category: 'ROLLS', description: 'Juicy kebab wrap', prices: { 'Standard': 139 } },
+            { name: 'Mutton Kebab Roll', category: 'ROLLS', description: 'Spicy mutton wrap', prices: { 'Standard': 179 } },
+            
+            // Breads
+            { name: 'Roomali Roti', category: 'BREADS', description: 'Soft handkerchief bread', prices: { 'Per pc': 12 } },
+
+            // Meal/Gravy
+            { name: 'Chicken Korma', category: 'GRAVY', description: 'Rich spicy curry', prices: { 'Half (2 pcs)': 229, 'Full (5 pcs)': 399 } },
+            { name: 'Butter Chicken', category: 'GRAVY', description: 'Classic creamy tomato gravy', prices: { 'Half (2 pcs)': 229, 'Full (5 pcs)': 399 } },
+            { name: 'Spicy Chicken Curry', category: 'GRAVY', description: 'Homestyle curry', prices: { 'Half (2 pcs)': 199, 'Full (5 pcs)': 379 } },
+            { name: 'Mughlai Chicken Biryani', category: 'GRAVY', description: 'Aromatic rice dish', prices: { 'Half (2 pcs)': 199, 'Full (5 pcs)': 379 } },
+            { name: 'Egg Curry', category: 'GRAVY', description: 'Spicy egg gravy', prices: { '2 eggs': 119, '4 eggs': 199 } }
+        ];
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchMenu();
+        });
+
+        // --- DB FUNCTIONS ---
+
+        async function fetchMenu() {
+            try {
+                const { data, error } = await supabase.from('menu_items').select('*');
+                
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    // Database is empty, trigger seed modal
+                    document.getElementById('seedModal').classList.remove('hidden');
+                    // Use seed data locally for preview
+                    processMenuData(SEED_DATA, true); 
+                } else {
+                    processMenuData(data, false);
+                }
+            } catch (err) {
+                console.error('Error fetching menu:', err);
+                // Fallback to local data if DB fails so site still looks good
+                processMenuData(SEED_DATA, true);
+                alert("Could not connect to live menu. Using offline mode.");
+            }
+        }
+
+        async function seedDatabase() {
+            const btn = document.querySelector('#seedModal button.bg-brand-red');
+            const status = document.getElementById('seedStatus');
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Uploading...';
+            btn.disabled = true;
+
+            try {
+                // Map local seed data to DB schema
+                const records = SEED_DATA.map(item => ({
+                    name: item.name,
+                    category: item.category,
+                    prices: item.prices,
+                    description: item.description,
+                    in_stock: true,
+                    image_url: null // Or add placeholder URLs if desired
+                }));
+
+                const { data, error } = await supabase.from('menu_items').insert(records);
+                
+                if (error) throw error;
+
+                status.innerText = "Success! Reloading...";
+                status.className = "mt-4 text-green-600 font-bold";
+                setTimeout(() => location.reload(), 1000);
+
+            } catch (err) {
+                console.error("Seeding failed", err);
+                status.innerText = "Error: Check console. You might need to enable RLS policies or use a service key.";
+                status.className = "mt-4 text-red-600 font-bold";
+                btn.innerHTML = 'Try Again';
+                btn.disabled = false;
+            }
+        }
+
+        function closeSeedModal() {
+            document.getElementById('seedModal').classList.add('hidden');
+        }
+
+        // --- DATA PROCESSING & RENDERING ---
+
+        function processMenuData(data, isLocal) {
+            // Normalize categories to uppercase for consistency
+            state.menu = data.map(item => ({
+                ...item,
+                category: item.category.toUpperCase()
+            }));
+            // Extract unique categories from normalized data
+            const cats = new Set(state.menu.map(item => item.category));
+            state.categories = ['All', ...Array.from(cats)];
+            
+            renderCategories();
+            renderMenuGrid();
+            container.innerHTML = state.categories.map(cat => `
+                <button 
+                    onclick="setCategory('${cat}')"
+                    class="px-5 py-2 rounded-full text-sm font-bold uppercase tracking-wider transition whitespace-nowrap
+                    ${state.activeCategory === cat 
+                        ? 'bg-brand-red text-white shadow-md transform scale-105' 
+                        : 'bg-white text-gray-600 hover:bg-gray-200 border border-gray-200'}"
+                >
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function setCategory(cat) {
+            state.activeCategory = cat;
+            renderCategories(); // Re-render to update active style
+            renderMenuGrid();
+        }
+
+        function renderMenuGrid() {
+            const container = document.getElementById('menu-grid');
+            const filtered = state.activeCategory === 'All' 
+                ? state.menu 
+                : state.menu.filter(item => item.category === state.activeCategory);
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No items found in this category.</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map((item, index) => {
+                // Determine prices (handle JSONB format)
+                const priceKeys = Object.keys(item.prices);
+                const basePrice = item.prices[priceKeys[0]];
+
+                return `
+                <div class="bg-white rounded-xl shadow-sm hover:shadow-lg transition border border-gray-100 overflow-hidden flex flex-col group">
+                    <div class="h-48 overflow-hidden bg-gray-100 relative">
+                        <!-- Placeholder Image Logic -->
+                        <div class="absolute inset-0 flex items-center justify-center text-gray-300 bg-gray-100">
+                            <i class="fa-solid fa-drumstick-bite text-4xl"></i>
+                        </div>
+                        <img src="${item.image_url || `https://source.unsplash.com/400x300/?${item.category.toLowerCase()},food`}" 
+                             onerror="this.style.display='none'"
+                             alt="${item.name}" 
+                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500 relative z-10"
+                        >
+                        ${!item.in_stock ? '<div class="absolute inset-0 bg-white bg-opacity-80 z-20 flex items-center justify-center font-bold text-gray-500">OUT OF STOCK</div>' : ''}
+                    </div>
+                    
+                    <div class="p-5 flex-1 flex flex-col">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-bold font-display text-brand-dark leading-tight">${item.name}</h3>
+                            <span class="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-500 rounded">${item.category}</span>
+                        </div>
+                        <p class="text-gray-500 text-sm mb-4 line-clamp-2">${item.description || 'Authentic delhi taste.'}</p>
+                        
+                        <div class="mt-auto pt-4 border-t border-dashed border-gray-200">
+                            <div class="flex justify-center">
+                                <button 
+                                    onclick="openPortionModal('${item.id || item.name}', ${index})"
+                                    ${!item.in_stock ? 'disabled' : ''}
+                                    class="bg-brand-red text-white px-6 py-3 rounded-full font-bold hover:bg-red-700 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                                >
+                                    <i class="fa-solid fa-utensils text-sm"></i>
+                                    Select Portion
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        // --- CART LOGIC ---
+
+        function addToCart(itemId, index) {
+            // Find item by ID or Name (fallback for local data which might not have UUIDs yet)
+            const item = state.menu.find(i => (i.id === itemId) || (i.name === itemId));
+            const variantSelect = document.getElementById(`variant-${index}`);
+            const variantName = variantSelect.value;
+            const price = item.prices[variantName];
+
+            // Check if item+variant already in cart
+            const existing = state.cart.find(c => c.name === item.name && c.variant === variantName);
+
+            if (existing) {
+                existing.quantity++;
+            } else {
+                state.cart.push({
+                    id: item.id, // Might be undefined if local seed, handled later
+                    name: item.name,
+                    variant: variantName,
+                    price: price,
+                    quantity: 1,
+                    image: item.image_url
+                });
+            }
+
+            renderCart();
+            animateCartBadge();
+        }
+
+        function removeFromCart(cartIndex) {
+            state.cart.splice(cartIndex, 1);
+            renderCart();
+        }
+
+        function updateQuantity(cartIndex, change) {
+            const item = state.cart[cartIndex];
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                removeFromCart(cartIndex);
+            } else {
+                renderCart();
+            }
+        }
+
+        function renderCart() {
+            const container = document.getElementById('cart-items');
+            const subtotalEl = document.getElementById('cart-subtotal');
+            const totalEl = document.getElementById('cart-total');
+            const totalMobile = document.getElementById('mobile-cart-total');
+            const badges = document.querySelectorAll('#cart-badge, #mobile-cart-badge');
+            const checkoutBtn = document.getElementById('checkout-btn');
+
+            if (state.cart.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-48 text-gray-400">
+                        <i class="fa-solid fa-basket-shopping text-4xl mb-2 opacity-30"></i>
+                        <p>Your cart is empty</p>
+                    </div>`;
+                subtotalEl.innerText = '₹0';
+                totalEl.innerText = '₹0';
+                totalMobile.innerText = '₹0';
+                badges.forEach(b => { b.innerText = '0'; b.classList.add('scale-0'); });
+                checkoutBtn.disabled = true;
+                return;
+            }
+
+            // Calculate totals
+            const total = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            // Update UI
+            subtotalEl.innerText = '₹' + total;
+            totalEl.innerText = '₹' + total;
+            totalMobile.innerText = '₹' + total;
+            
+            const count = state.cart.reduce((acc, item) => acc + item.quantity, 0);
+            badges.forEach(b => { 
+                b.innerText = count; 
+                b.classList.remove('scale-0'); 
+            });
+
+            checkoutBtn.disabled = false;
+
+            // Render Items
+            container.innerHTML = state.cart.map((item, idx) => `
+                <div class="flex items-start gap-3 bg-white p-2 rounded shadow-sm border border-gray-100">
+                    <div class="flex-1">
+                        <h4 class="font-bold text-brand-dark text-sm leading-tight">${item.name}</h4>
+                        <div class="text-xs text-gray-500 mb-1">${item.variant}</div>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="font-semibold text-brand-red">₹${item.price * item.quantity}</span>
+                            
+                            <div class="flex items-center bg-gray-100 rounded px-1">
+                                <button onclick="updateQuantity(${idx}, -1)" class="px-2 py-1 text-gray-600 hover:text-red-600">-</button>
+                                <span class="text-xs font-bold w-4 text-center">${item.quantity}</span>
+                                <button onclick="updateQuantity(${idx}, 1)" class="px-2 py-1 text-gray-600 hover:text-green-600">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleCart() {
+            const sidebar = document.getElementById('cart-sidebar');
+            // Toggle classes to slide in/out or show/hide based on mobile/desktop
+            if (window.innerWidth < 768) {
+                // Mobile behavior (Drawer)
+                if (sidebar.classList.contains('hidden')) {
+                    sidebar.classList.remove('hidden');
+                    setTimeout(() => sidebar.classList.remove('translate-x-full'), 10);
+                } else {
+                    sidebar.classList.add('translate-x-full');
+                    setTimeout(() => sidebar.classList.add('hidden'), 300);
+                }
+            } else {
+                // Desktop - Just scroll to it or highlight (it's always visible in layout)
+                // If using hidden implementation on desktop:
+                sidebar.classList.toggle('hidden');
+            }
+        }
+
+        function animateCartBadge() {
+            const badge = document.getElementById('cart-badge');
+            badge.classList.add('animate-bounce-short');
+            setTimeout(() => badge.classList.remove('animate-bounce-short'), 600);
+        }
+
+        function scrollToMenu() {
+            document.getElementById('category-filters').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- PORTION SELECTION FUNCTIONS ---
+
+        function openPortionModal(itemId, index) {
+            // Find item by ID or Name
+            const item = state.menu.find(i => (i.id === itemId) || (i.name === itemId));
+            state.selectedItem = item;
+            state.selectedPortion = null;
+
+            // Update modal title
+            document.getElementById('portion-item-name').innerText = item.name;
+
+            // Render portion options
+            const optionsContainer = document.getElementById('portion-options');
+            const priceKeys = Object.keys(item.prices);
+            
+            optionsContainer.innerHTML = priceKeys.map((key, idx) => {
+                const price = item.prices[key];
+                const isSelected = idx === 0; // Select first option by default
+                if (isSelected) state.selectedPortion = key;
+                
+                return `
+                <div class="portion-option ${isSelected ? 'selected' : ''}" onclick="selectPortion('${key}')">
+                    <div class="flex items-center justify-between p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${isSelected ? 'border-brand-red bg-red-50' : 'border-gray-200 hover:border-gray-300'}">
+                        <div class="flex-1">
+                            <div class="font-bold text-brand-dark">${key}</div>
+                            <div class="text-sm text-gray-500">${getPortionDescription(key)}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold text-brand-red text-lg">₹${price}</div>
+                            ${isSelected ? '<i class="fa-solid fa-check text-brand-red ml-2"></i>' : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // Enable/disable add to cart button
+            document.getElementById('add-to-cart-btn').disabled = !state.selectedPortion;
+
+            // Show modal
+            document.getElementById('portionModal').classList.remove('hidden');
+        }
+
+        function selectPortion(portion) {
+            state.selectedPortion = portion;
+            
+            // Update UI to show selected portion
+            document.querySelectorAll('.portion-option').forEach(option => {
+                const div = option.querySelector('div');
+                if (option.getAttribute('onclick').includes(portion)) {
+                    div.classList.remove('border-gray-200', 'hover:border-gray-300');
+                    div.classList.add('border-brand-red', 'bg-red-50');
+                    option.querySelector('.fa-check')?.remove();
+                    div.querySelector('.text-right').innerHTML += '<i class="fa-solid fa-check text-brand-red ml-2"></i>';
+                } else {
+                    div.classList.remove('border-brand-red', 'bg-red-50');
+                    div.classList.add('border-gray-200', 'hover:border-gray-300');
+                    option.querySelector('.fa-check')?.remove();
+                }
+            });
+
+            // Enable add to cart button
+            document.getElementById('add-to-cart-btn').disabled = false;
+        }
+
+        function getPortionDescription(portion) {
+            const descriptions = {
+                'Half (1 seekh)': 'Perfect for one person',
+                'Full (2 seekh)': 'Great for sharing',
+                '2 pcs': 'Two delicious pieces',
+                '4 pcs': 'Four generous pieces',
+                '8 pcs': 'Eight pieces for the whole family',
+                'Half (2 pcs)': 'Perfect portion for one',
+                'Full (5 pcs)': 'Complete meal for one',
+                'Standard': 'Regular serving size',
+                'Per pc': 'Single piece',
+                '2 eggs': 'Two egg serving',
+                '4 eggs': 'Four egg serving'
+            };
+            return descriptions[portion] || 'Delicious portion';
+        }
+
+        function closePortionModal() {
+            document.getElementById('portionModal').classList.add('hidden');
+            state.selectedItem = null;
+            state.selectedPortion = null;
+        }
+
+        function addSelectedPortionToCart() {
+            if (!state.selectedItem || !state.selectedPortion) {
+                alert('Please select a portion first');
+                return;
+            }
+
+            const price = state.selectedItem.prices[state.selectedPortion];
+
+            // Check if item+variant already in cart
+            const existing = state.cart.find(c => c.name === state.selectedItem.name && c.variant === state.selectedPortion);
+
+            if (existing) {
+                existing.quantity++;
+            } else {
+                state.cart.push({
+                    id: state.selectedItem.id,
+                    name: state.selectedItem.name,
+                    variant: state.selectedPortion,
+                    price: price,
+                    quantity: 1,
+                    image: state.selectedItem.image_url
+                });
+            }
+
+            renderCart();
+            animateCartBadge();
+            closePortionModal();
+            
+            // Show success notification
+            showNotification(`${state.selectedItem.name} (${state.selectedPortion}) added to cart!`, 'success');
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create a simple toast notification
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg font-bold transition-all duration-300 transform translate-x-full ${
+                type === 'success' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+            }`;
+            notification.innerText = message;
+            document.body.appendChild(notification);
+
+            // Animate in
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 10);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 300);
+            }, 3000);
+        }
+
+        // --- CUSTOMER FUNCTIONS ---
+
+        async function checkCustomer() {
+            const phone = document.getElementById('cust-phone').value.replace(/\D/g,'');
+            if (phone.length === 10) {
+                const { data, error } = await supabase
+                    .from('customers')
+                    .select('*')
+                    .eq('phone', phone)
+                    .single();
+                
+                if (data) {
+                    // Customer found - auto-fill details
+                    document.getElementById('cust-name').value = data.name || data.first_name || '';
+                    document.getElementById('customer-status').innerText = "RETURNING CUSTOMER";
+                    document.getElementById('customer-status').className = "text-xs text-green-700 font-bold";
+                    document.getElementById('customer-found-badge').classList.remove('hidden');
+                    
+                    // Show notification
+                    showNotification(`Welcome back, ${data.name || data.first_name}!`, 'success');
+                } else {
+                    // New customer
+                    document.getElementById('customer-status').innerText = "NEW CUSTOMER";
+                    document.getElementById('customer-status').className = "text-xs text-gray-700";
+                    document.getElementById('customer-found-badge').classList.add('hidden');
+                }
+            } else {
+                // Reset if phone is incomplete
+                document.getElementById('customer-status').innerText = "NEW CUSTOMER";
+                document.getElementById('customer-status').className = "text-xs text-gray-700";
+                document.getElementById('customer-found-badge').classList.add('hidden');
+            }
+        }
+
+        // --- ORDER SUBMISSION ---
+
+        async function placeOrder() {
+            const phone = document.getElementById('cust-phone').value.replace(/\D/g,'');
+            const name = document.getElementById('cust-name').value.trim();
+            const note = document.getElementById('cust-note').value.trim();
+            const btn = document.getElementById('checkout-btn');
+
+            // Validation
+            if (state.cart.length === 0) {
+                alert("Your cart is empty! Add items first.");
+                return;
+            }
+            if (!phone || phone.length < 10) {
+                alert("Please enter a valid 10-digit phone number.");
+                return;
+            }
+            if (!name) {
+                alert("Please enter your name.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+            try {
+                // 1. Find or Create Customer
+                let customerId;
+                let { data: existingCustomer } = await supabase
+                    .from('customers')
+                    .select('id, name')
+                    .eq('phone', phone)
+                    .single();
+                
+                if (existingCustomer) {
+                    // Existing customer - update name if changed
+                    customerId = existingCustomer.id;
+                    if (name !== existingCustomer.name) {
+                        await supabase
+                            .from('customers')
+                            .update({ name: name })
+                            .eq('id', customerId);
+                    }
+                    // No need to update total_orders - it can be calculated from orders table
+                } else {
+                    // New customer
+                    const { data: newCustomer, error: createError } = await supabase
+                        .from('customers')
+                        .insert([{ 
+                            name: name, 
+                            phone: phone
+                        }])
+                        .select()
+                        .single();
+                    
+                    if (createError) throw new Error("Database error saving customer: " + createError.message);
+                    customerId = newCustomer.id;
+                }
+
+                // 2. Create Order
+                const totalAmount = state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+                const { data: orderData, error: orderError } = await supabase
+                    .from('orders')
+                    .insert([{
+                        customer_id: customerId,
+                        items: state.cart,
+                        total_amount: totalAmount,
+                        order_type: 'Delivery',
+                        payment_method: 'COD',
+                        status: 'pending',
+                        note: note
+                    }])
+                    .select()
+                    .single();
+
+                if (orderError) throw orderError;
+
+                // 3. Success
+                document.getElementById('success-order-id').innerText = orderData.id;
+                document.getElementById('orderSuccessModal').classList.remove('hidden');
+                
+                // Clear cart
+                state.cart = [];
+                renderCart();
+
+                // Reset form
+                document.getElementById('cust-phone').value = '';
+                document.getElementById('cust-name').value = '';
+                document.getElementById('cust-note').value = '';
+                document.getElementById('customer-status').innerText = "NEW CUSTOMER";
+                document.getElementById('customer-status').className = "text-xs text-gray-700";
+                document.getElementById('customer-found-badge').classList.add('hidden');
+
+            } catch (err) {
+                console.error("Order failed:", err);
+                alert("Error placing order: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'PLACE ORDER';
+            }
+        }
+
+        // --- UTILITY FUNCTIONS ---
+
+        // Function to handle image loading errors
+        function handleImageError(img) {
+            img.style.display = 'none';
+        }
+
+        // Function to format currency
+        function formatCurrency(amount) {
+            return '₹' + amount;
+        }
+
+        // Function to get cart item count
+        function getCartItemCount() {
+            return state.cart.reduce((acc, item) => acc + item.quantity, 0);
+        }
+
+        // Function to get cart total
+        function getCartTotal() {
+            return state.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        }
+
+        // Function to validate phone number
+        function isValidPhone(phone) {
+            return /^\d{10}$/.test(phone);
+        }
+
+        // Function to show notification
+        function showNotification(message, type = 'info') {
+            // Simple notification implementation
+            console.log(`${type.toUpperCase()}: ${message}`);
+            // You can implement a proper toast notification here
+        }
+
+    </script>
+</body>
+</html>
